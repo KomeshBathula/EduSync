@@ -96,8 +96,8 @@ export const trainModel = async (options = {}) => {
   console.log('Collecting training data...');
   const { features, labels } = await collectTrainingData();
 
-  if (features.length < 5) {
-    throw new Error(`Insufficient training data: only ${features.length} samples. Need at least 5.`);
+  if (features.length < 10) {
+    throw new Error(`Insufficient training data: only ${features.length} samples. Need at least 10.`);
   }
 
   console.log(`Collected ${features.length} training samples.`);

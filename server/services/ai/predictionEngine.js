@@ -92,9 +92,11 @@ export const evaluateRisk = async (studentId) => {
         // Update user with prediction details
         const previousRisk = student.overallRiskLevel || 'LOW';
         student.overallRiskLevel = overallRiskLevel;
-        student.lastMLPrediction = mlResult ? mlResult.predictedClass : undefined;
         student.lastRulePrediction = rulePrediction;
-        student.predictionConfidence = mlResult ? mlResult.confidence : undefined;
+        if (mlResult) {
+            student.lastMLPrediction = mlResult.predictedClass;
+            student.predictionConfidence = mlResult.confidence;
+        }
         await student.save();
 
         // Log rule-based prediction for audit if ML was not used or was overridden

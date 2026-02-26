@@ -11,6 +11,9 @@ const MODEL_DIR = path.join(__dirname, 'model');
 
 const RISK_CLASSES = ['LOW', 'MEDIUM', 'HIGH'];
 
+/** Maximum time (ms) allowed for feature extraction before timeout. */
+const FEATURE_EXTRACTION_TIMEOUT_MS = 5000;
+
 /**
  * Singleton model cache to avoid reloading on every prediction.
  */
@@ -99,7 +102,7 @@ export const predictRisk = async (studentId) => {
     // Extract features with timeout protection
     const featurePromise = extractFeatures(studentId);
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Feature extraction timeout')), 5000),
+      setTimeout(() => reject(new Error('Feature extraction timeout')), FEATURE_EXTRACTION_TIMEOUT_MS),
     );
     const features = await Promise.race([featurePromise, timeoutPromise]);
     const vector = featuresToVector(features);
