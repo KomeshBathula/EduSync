@@ -1,5 +1,6 @@
 import User from '../../models/User.js';
 import QuizResult from '../../models/QuizResult.js';
+import { createNotification } from '../notificationService.js';
 
 /**
  * Calculates a student's risk level using:
@@ -28,8 +29,13 @@ export const evaluateRisk = async (studentId) => {
             }
         }
 
-        // 2. Engagement (Mocked based on active time/login count logic)
-        const engagementScore = 60; // Mock average engagement %
+        // 2. Engagement (real data from ML tracking fields)
+        const totalInteractions = (student.aiDoubtUsageCount || 0) +
+            (student.youtubeSummaryCount || 0) +
+            (student.revisionPlanCount || 0) +
+            (student.materialViewCount || 0);
+        // Score 0-100: consider >10 interactions as 100% engaged
+        const engagementScore = Math.min(totalInteractions * 10, 100);
         if (engagementScore < 30) {
             baseRisk += 30;
         }
@@ -44,8 +50,24 @@ export const evaluateRisk = async (studentId) => {
         if (baseRisk >= 75) overallRiskLevel = 'HIGH';
         else if (baseRisk >= 40) overallRiskLevel = 'MEDIUM';
 
+        const previousRisk = student.overallRiskLevel || 'LOW';
         student.overallRiskLevel = overallRiskLevel;
         await student.save();
+
+        // Notify student if risk level changed
+        if (previousRisk !== overallRiskLevel) {
+            const riskMessages = {
+                HIGH: 'Your academic risk level has increased to HIGH. Consider using Smart Revision and AI Doubt Solver to improve.',
+                MEDIUM: `Your academic risk level is now MEDIUM${previousRisk === 'HIGH' ? ' (improved!)' : ''}. Keep practicing to stay on track.`,
+                LOW: 'Great news! Your academic risk level has dropped to LOW. Keep up the excellent work!',
+            };
+            createNotification({
+                userId: studentId,
+                title: 'Risk Level Updated',
+                message: riskMessages[overallRiskLevel],
+                type: 'RISK',
+            }).catch(() => {}); // fire-and-forget
+        }
 
         console.log(`Evaluated ${overallRiskLevel} risk for student ${studentId} (Score: ${baseRisk})`);
         return overallRiskLevel;

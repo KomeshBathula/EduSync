@@ -5,17 +5,8 @@ import PageContainer from '../../components/common/PageContainer';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { Upload, Users, ShieldAlert, Zap, LogOut, ChevronDown, X, FileText, BrainCircuit, Trash2, TrendingUp } from 'lucide-react';
+import { Upload, Users, ShieldAlert, Zap, LogOut, ChevronDown, X, FileText, BrainCircuit, Trash2, TrendingUp, Clock, Activity, Shield, AlertTriangle, Eye, Filter } from 'lucide-react';
 import api from '../../api/axios';
-
-const defaultRadarData = [
-    { subject: 'Arrays', A: 150, fullMark: 150 },
-    { subject: 'Trees', A: 150, fullMark: 150 },
-    { subject: 'Sorting', A: 150, fullMark: 150 },
-    { subject: 'Graphs', A: 150, fullMark: 150 },
-    { subject: 'DP', A: 150, fullMark: 150 },
-    { subject: 'HashMaps', A: 150, fullMark: 150 },
-];
 
 const TeacherDashboard = () => {
     const navigate = useNavigate();
@@ -27,7 +18,7 @@ const TeacherDashboard = () => {
         activeQuizzes: 0,
         highRiskCount: 0,
         avgAccuracy: 0,
-        radarData: defaultRadarData,
+        radarData: [],
         highRiskStudents: [],
         recentQuizzes: [],
         recentMaterials: [],
@@ -51,6 +42,14 @@ const TeacherDashboard = () => {
     });
     const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
+    const [activityLog, setActivityLog] = useState([]);
+    const [activityLoading, setActivityLoading] = useState(false);
+
+    const [integrityQuizId, setIntegrityQuizId] = useState('');
+    const [integritySummary, setIntegritySummary] = useState([]);
+    const [integrityLoading, setIntegrityLoading] = useState(false);
+    const [integrityFilter, setIntegrityFilter] = useState('all'); // all | flagged | auto-submitted
+
     useEffect(() => {
         // Fetch public academic structures
         api.get('/api/academic/public')
@@ -62,6 +61,38 @@ const TeacherDashboard = () => {
             })
             .catch((err) => console.error("Failed fetching structures:", err));
     }, []);
+
+    useEffect(() => {
+        setActivityLoading(true);
+        api.get('/api/activity/my?limit=10')
+            .then(res => setActivityLog(Array.isArray(res.data) ? res.data : []))
+            .catch(err => console.error('Failed fetching activity:', err))
+            .finally(() => setActivityLoading(false));
+    }, []);
+
+    const formatRelativeTime = (dateStr) => {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return 'Just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.floor(hrs / 24);
+        return `${days}d ago`;
+    };
+
+    const ACTION_META = {
+        QUIZ_CREATE: { label: 'Created Quiz', color: 'text-primary', bg: 'bg-primary-light/10' },
+        QUIZ_DELETE: { label: 'Deleted Quiz', color: 'text-danger', bg: 'bg-danger/10' },
+        MATERIAL_UPLOAD: { label: 'Uploaded Material', color: 'text-success', bg: 'bg-success/10' },
+        MATERIAL_DELETE: { label: 'Deleted Material', color: 'text-danger', bg: 'bg-danger/10' },
+        USER_CREATE: { label: 'Created User', color: 'text-primary', bg: 'bg-primary-light/10' },
+        USER_UPDATE: { label: 'Updated User', color: 'text-warning', bg: 'bg-warning/10' },
+        USER_DELETE: { label: 'Deleted User', color: 'text-danger', bg: 'bg-danger/10' },
+        STRUCTURE_CREATE: { label: 'Created Structure', color: 'text-primary', bg: 'bg-primary-light/10' },
+        STRUCTURE_UPDATE: { label: 'Updated Structure', color: 'text-warning', bg: 'bg-warning/10' },
+        STRUCTURE_DELETE: { label: 'Deleted Structure', color: 'text-danger', bg: 'bg-danger/10' },
+    };
 
     useEffect(() => {
         if (!selectedContextId) return;
@@ -110,6 +141,44 @@ const TeacherDashboard = () => {
         } finally {
             setIsUploading(false);
         }
+    };
+
+    const fetchIntegritySummary = async (quizId) => {
+        if (!quizId) { setIntegritySummary([]); return; }
+        setIntegrityLoading(true);
+        try {
+            const res = await api.get(`/api/quiz/${quizId}/integrity/summary`);
+            setIntegritySummary(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+            console.error('Failed fetching integrity summary:', err);
+            setIntegritySummary([]);
+        } finally {
+            setIntegrityLoading(false);
+        }
+    };
+
+    const handleIntegrityQuizChange = (quizId) => {
+        setIntegrityQuizId(quizId);
+        setIntegrityFilter('all');
+        fetchIntegritySummary(quizId);
+    };
+
+    const filteredIntegrity = integritySummary.filter(row => {
+        if (integrityFilter === 'flagged') return row.totalViolations >= 2;
+        if (integrityFilter === 'auto-submitted') return row.autoSubmitted;
+        return true;
+    });
+
+    const VIOLATION_LABELS = {
+        TAB_SWITCH: 'Tab Switch',
+        WINDOW_BLUR: 'Window Blur',
+        COPY_ATTEMPT: 'Copy',
+        PASTE_ATTEMPT: 'Paste',
+        RIGHT_CLICK: 'Right Click',
+        DEVTOOLS_ATTEMPT: 'Dev Tools',
+        SCREENSHOT_KEY: 'Screenshot',
+        FULLSCREEN_EXIT: 'Fullscreen Exit',
+        MULTIPLE_VIOLATIONS: 'Multiple',
     };
 
     const handleDeleteQuiz = async (quizId) => {
@@ -253,18 +322,24 @@ const TeacherDashboard = () => {
                         <p className="text-sm text-text-secondary">Identify structural weak spots across the selected section</p>
                     </div>
                     <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart data={analytics.radarData || defaultRadarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-                                <PolarGrid stroke="var(--color-border-subtle)" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 500 }} />
-                                <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
-                                <Radar name="Class Avg" dataKey="A" stroke="var(--color-primary-base)" fill="var(--color-primary-base)" fillOpacity={0.4} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'var(--color-surface-base)', borderColor: 'var(--color-border-base)', borderRadius: 'var(--radius-md)' }}
-                                    itemStyle={{ color: 'var(--color-primary-base)', fontWeight: 'bold' }}
-                                />
-                            </RadarChart>
-                        </ResponsiveContainer>
+                        {analytics.radarData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart data={analytics.radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+                                    <PolarGrid stroke="var(--color-border-subtle)" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 500 }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
+                                    <Radar name="Class Avg" dataKey="A" stroke="var(--color-primary-base)" fill="var(--color-primary-base)" fillOpacity={0.4} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--color-surface-base)', borderColor: 'var(--color-border-base)', borderRadius: 'var(--radius-md)' }}
+                                        itemStyle={{ color: 'var(--color-primary-base)', fontWeight: 'bold' }}
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full">
+                                <p className="text-sm text-text-secondary">No quiz data yet. Create quizzes to see mastery radar.</p>
+                            </div>
+                        )}
                     </div>
                 </Card>
 
@@ -393,6 +468,183 @@ const TeacherDashboard = () => {
                         </tbody>
                     </table>
                 </div>
+            </Card>
+
+            {/* Activity Log */}
+            <Card className="p-0 overflow-hidden mt-8">
+                <div className="p-6 border-b border-border-base flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-warning/10 text-warning">
+                        <Activity className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-heading font-bold text-text-primary">Recent Activity</h3>
+                        <p className="text-sm text-text-secondary">Your latest actions across the platform</p>
+                    </div>
+                </div>
+                <div className="p-6">
+                    {activityLoading ? (
+                        <p className="text-sm text-text-secondary text-center py-6">Loading activity...</p>
+                    ) : activityLog.length === 0 ? (
+                        <p className="text-sm text-text-secondary text-center py-6 bg-surface-alt rounded-[var(--radius-sm)] border border-border-subtle">No recent activity recorded.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {activityLog.map((item, i) => {
+                                const meta = ACTION_META[item.actionType] || { label: item.actionType, color: 'text-text-secondary', bg: 'bg-surface-alt' };
+                                return (
+                                    <div key={item._id || i} className="flex items-start gap-4 p-3 rounded-[var(--radius-md)] border border-border-base bg-surface hover:border-border-hover transition-all">
+                                        <div className={`p-2 rounded-lg shrink-0 ${meta.bg} ${meta.color}`}>
+                                            <Activity className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <span className={`text-xs font-bold uppercase tracking-wide ${meta.color}`}>{meta.label}</span>
+                                            </div>
+                                            <p className="text-sm text-text-primary line-clamp-1">{item.description || 'No description'}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-text-muted shrink-0">
+                                            <Clock className="w-3 h-3" />
+                                            <span className="text-xs">{formatRelativeTime(item.createdAt)}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </Card>
+
+            {/* Exam Integrity Monitor */}
+            <Card className="p-0 overflow-hidden mt-8">
+                <div className="p-6 border-b border-border-base flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-center gap-3 flex-1">
+                        <div className="p-2 rounded-lg bg-danger/10 text-danger">
+                            <Shield className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-heading font-bold text-text-primary">Exam Integrity Monitor</h3>
+                            <p className="text-sm text-text-secondary">Violation tracking &amp; behavioral flags per quiz</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="relative">
+                            <select
+                                value={integrityQuizId}
+                                onChange={e => handleIntegrityQuizChange(e.target.value)}
+                                className="appearance-none bg-surface-alt border border-border-base rounded-[var(--radius-md)] pl-3 pr-8 py-2 text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
+                            >
+                                <option value="">Select a Quiz</option>
+                                {(analytics.recentQuizzes || []).map(q => (
+                                    <option key={q._id} value={q._id}>{q.topic} ({q.difficulty})</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-text-muted absolute right-2 top-2.5 pointer-events-none" />
+                        </div>
+                        {integrityQuizId && (
+                            <div className="flex items-center gap-1 bg-surface-alt border border-border-base rounded-[var(--radius-md)] overflow-hidden">
+                                {[['all', 'All'], ['flagged', 'Flagged'], ['auto-submitted', 'Auto-Sub']].map(([val, label]) => (
+                                    <button
+                                        key={val}
+                                        onClick={() => setIntegrityFilter(val)}
+                                        className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                            integrityFilter === val
+                                                ? 'bg-primary text-white'
+                                                : 'text-text-secondary hover:text-text-primary hover:bg-surface'
+                                        }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {!integrityQuizId ? (
+                    <div className="p-8 text-center">
+                        <Eye className="w-8 h-8 text-text-muted mx-auto mb-3" />
+                        <p className="text-sm text-text-secondary">Select a quiz above to view integrity data.</p>
+                    </div>
+                ) : integrityLoading ? (
+                    <div className="p-8 text-center">
+                        <p className="text-sm text-text-secondary">Loading integrity data...</p>
+                    </div>
+                ) : filteredIntegrity.length === 0 ? (
+                    <div className="p-8 text-center">
+                        <Shield className="w-8 h-8 text-success mx-auto mb-3" />
+                        <p className="text-sm text-success font-medium">
+                            {integrityFilter === 'all'
+                                ? 'No integrity violations recorded for this quiz.'
+                                : `No ${integrityFilter === 'flagged' ? 'flagged students' : 'auto-submitted exams'} found.`}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                            <thead className="bg-surface-alt border-b border-border-base">
+                                <tr>
+                                    <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Roll No.</th>
+                                    <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Student</th>
+                                    <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider text-center">Violations</th>
+                                    <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Types</th>
+                                    <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider text-center">Status</th>
+                                    <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">First Violation</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-subtle bg-surface">
+                                {filteredIntegrity.map((row, i) => (
+                                    <tr key={row._id || i} className={`hover:bg-surface-alt/50 transition-colors ${row.autoSubmitted ? 'bg-danger/5' : ''}`}>
+                                        <td className="px-6 py-4 font-mono font-medium text-text-secondary">{row.student?.rollNumber || 'N/A'}</td>
+                                        <td className="px-6 py-4 font-medium text-text-primary">{row.student?.name || 'Unknown'}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <Badge color={row.totalViolations >= 3 ? 'danger' : row.totalViolations >= 2 ? 'warning' : 'primary'}>
+                                                {row.totalViolations}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {(row.violationTypes || []).map(type => (
+                                                    <span key={type} className="inline-block px-2 py-0.5 text-xs rounded-full bg-warning/10 text-warning font-medium">
+                                                        {VIOLATION_LABELS[type] || type}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {row.autoSubmitted ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-full bg-danger/10 text-danger">
+                                                    <AlertTriangle className="w-3 h-3" /> Auto-Submitted
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-text-secondary">Active</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-text-secondary text-xs">
+                                            {row.firstViolation ? new Date(row.firstViolation).toLocaleString() : '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {/* Summary footer */}
+                {integrityQuizId && !integrityLoading && integritySummary.length > 0 && (
+                    <div className="p-4 border-t border-border-base bg-surface-alt flex flex-wrap items-center gap-6 text-xs text-text-secondary">
+                        <span className="flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5" />
+                            <strong className="text-text-primary">{integritySummary.length}</strong> students with violations
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-danger" />
+                            <strong className="text-danger">{integritySummary.filter(r => r.autoSubmitted).length}</strong> auto-submitted
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <ShieldAlert className="w-3.5 h-3.5 text-warning" />
+                            <strong className="text-warning">{integritySummary.filter(r => r.totalViolations >= 2).length}</strong> flagged (2+ violations)
+                        </span>
+                    </div>
+                )}
             </Card>
 
             {/* Upload Notes Modal */}

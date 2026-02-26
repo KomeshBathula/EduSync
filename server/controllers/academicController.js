@@ -5,7 +5,7 @@ export const getPublicAcademicStructures = async (req, res) => {
         const structures = await listPublicAcademicStructures();
         res.json(structures);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 

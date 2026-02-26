@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Video, Search, Play, FileText, CheckCircle2,
-  ChevronDown, ChevronUp, Copy, BookOpen, HelpCircle, Globe, Loader2, AlertTriangle
+  ChevronDown, ChevronUp, Copy, BookOpen, HelpCircle, Globe, Loader2, AlertTriangle,
+  Brain, Layers
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import api from '../../api/axios';
 
 const LANGUAGES = ['English', 'Hindi', 'Telugu', 'Tamil', 'Spanish'];
+const NOTE_SIZES = ['Small', 'Medium', 'Detailed'];
 
 const CollapsibleSection = ({ title, icon: Icon, children, defaultOpen = false, iconColor = 'text-text-secondary' }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -46,9 +48,16 @@ const YoutubeAI = () => {
   const navigate = useNavigate();
   const [url, setUrl] = useState('');
   const [language, setLanguage] = useState('English');
+  const [noteSize, setNoteSize] = useState('Medium');
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+
+  // Post-reading quiz state
+  const [quizData, setQuizData] = useState(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
 
   const handleProcess = async (e) => {
     e.preventDefault();
@@ -56,8 +65,11 @@ const YoutubeAI = () => {
     setIsProcessing(true);
     setError('');
     setResult(null);
+    setQuizData(null);
+    setQuizAnswers({});
+    setQuizSubmitted(false);
     try {
-      const res = await api.post('/api/ai/youtube-summary', { url, language });
+      const res = await api.post('/api/ai/youtube-summary', { url, language, noteSize });
       setResult(res.data);
     } catch (err) {
       const msg = err?.response?.data?.error || err?.response?.data?.message || 'Failed to summarize video. Please try again.';
@@ -65,6 +77,39 @@ const YoutubeAI = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleGenerateQuiz = async () => {
+    if (!result) return;
+    setQuizLoading(true);
+    setQuizData(null);
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    try {
+      const res = await api.post('/api/ai/youtube-quiz', {
+        summary: result.summary,
+        keyConcepts: result.keyConcepts,
+        title: result.title,
+      });
+      setQuizData(res.data);
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Failed to generate quiz.');
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const handleQuizSubmit = () => {
+    setQuizSubmitted(true);
+  };
+
+  const getQuizScore = () => {
+    if (!quizData?.questions) return { correct: 0, total: 0 };
+    let correct = 0;
+    quizData.questions.forEach((q, idx) => {
+      if (quizAnswers[idx] === q.correctOptionIndex) correct++;
+    });
+    return { correct, total: quizData.questions.length };
   };
 
   const buildYoutubeEmbedUrl = (videoId) => {
@@ -141,6 +186,20 @@ const YoutubeAI = () => {
                 ))}
               </select>
               <Globe className="w-4 h-4 text-text-secondary absolute right-3 top-3.5 pointer-events-none" />
+            </div>
+
+            {/* Note Size Selector */}
+            <div className="relative">
+              <select
+                value={noteSize}
+                onChange={(e) => setNoteSize(e.target.value)}
+                className="appearance-none bg-background border border-border-base rounded-xl px-4 py-3 pr-10 text-text-primary focus:outline-none focus:border-danger/50 text-sm cursor-pointer min-w-[130px]"
+              >
+                {NOTE_SIZES.map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+              <Layers className="w-4 h-4 text-text-secondary absolute right-3 top-3.5 pointer-events-none" />
             </div>
 
             <button
@@ -272,6 +331,132 @@ const YoutubeAI = () => {
               </div>
             </CollapsibleSection>
           )}
+
+          {/* Post-Reading Quiz Section */}
+          <Card className="border border-warning/20 bg-warning/5">
+            <div className="p-5">
+              {!quizData && !quizLoading && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                      <Brain className="w-5 h-5 text-warning" /> Test Your Understanding
+                    </h3>
+                    <p className="text-sm text-text-secondary mt-1">Take a quick quiz based on this video to reinforce your learning.</p>
+                  </div>
+                  <button
+                    onClick={handleGenerateQuiz}
+                    className="px-5 py-2.5 bg-warning hover:bg-warning/80 text-white font-bold rounded-xl transition-all flex items-center gap-2 text-sm"
+                  >
+                    <Brain className="w-4 h-4" /> Generate Quiz
+                  </button>
+                </div>
+              )}
+
+              {quizLoading && (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 text-warning animate-spin mb-3" />
+                  <p className="text-sm text-text-secondary">Generating comprehension quiz...</p>
+                </div>
+              )}
+
+              {quizData?.questions?.length > 0 && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                      <Brain className="w-5 h-5 text-warning" /> Comprehension Quiz
+                    </h3>
+                    {quizData.riskLevel && (
+                      <span className={`text-xs px-2 py-1 rounded-lg font-medium ${
+                        quizData.riskLevel === 'HIGH' ? 'bg-danger/10 text-danger border border-danger/20' :
+                        quizData.riskLevel === 'MEDIUM' ? 'bg-warning/10 text-warning border border-warning/20' :
+                        'bg-success/10 text-success border border-success/20'
+                      }`}>
+                        Difficulty: {quizData.riskLevel === 'HIGH' ? 'Basic' : quizData.riskLevel === 'MEDIUM' ? 'Moderate' : 'Challenging'}
+                      </span>
+                    )}
+                  </div>
+
+                  {quizData.questions.map((q, qIdx) => {
+                    const userAnswer = quizAnswers[qIdx];
+                    const isAnswered = userAnswer !== undefined;
+                    const isCorrect = userAnswer === q.correctOptionIndex;
+
+                    return (
+                      <div key={qIdx} className="bg-surface rounded-xl border border-border-base p-4">
+                        <p className="text-sm font-semibold text-text-primary mb-3">
+                          {qIdx + 1}. {q.questionText}
+                        </p>
+                        <div className="space-y-2">
+                          {q.options.map((opt, optIdx) => {
+                            let optionStyle = 'border-border-base bg-surface-alt text-text-secondary hover:border-warning/50';
+                            if (quizSubmitted) {
+                              if (optIdx === q.correctOptionIndex) {
+                                optionStyle = 'border-success bg-success/10 text-success';
+                              } else if (optIdx === userAnswer && !isCorrect) {
+                                optionStyle = 'border-danger bg-danger/10 text-danger';
+                              }
+                            } else if (optIdx === userAnswer) {
+                              optionStyle = 'border-warning bg-warning/10 text-warning';
+                            }
+
+                            return (
+                              <button
+                                key={optIdx}
+                                onClick={() => {
+                                  if (!quizSubmitted) {
+                                    setQuizAnswers(prev => ({ ...prev, [qIdx]: optIdx }));
+                                  }
+                                }}
+                                disabled={quizSubmitted}
+                                className={`w-full text-left p-3 rounded-lg border text-sm transition-all flex items-center gap-3 ${optionStyle}`}
+                              >
+                                <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                  optIdx === userAnswer ? 'border-current bg-current/20' : 'border-border-base'
+                                }`}>
+                                  {String.fromCharCode(65 + optIdx)}
+                                </span>
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {quizSubmitted && q.explanation && (
+                          <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                            <p className="text-xs text-text-secondary">
+                              <span className="font-bold text-primary">Explanation:</span> {q.explanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {!quizSubmitted ? (
+                    <button
+                      onClick={handleQuizSubmit}
+                      disabled={Object.keys(quizAnswers).length < quizData.questions.length}
+                      className="w-full py-3 bg-warning hover:bg-warning/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Submit Quiz
+                    </button>
+                  ) : (
+                    <div className={`p-4 rounded-xl text-center ${
+                      getQuizScore().correct >= getQuizScore().total * 0.7 ? 'bg-success/10 border border-success/20' : 'bg-danger/10 border border-danger/20'
+                    }`}>
+                      <p className="text-lg font-bold text-text-primary">
+                        Score: {getQuizScore().correct} / {getQuizScore().total}
+                      </p>
+                      <p className="text-sm text-text-secondary mt-1">
+                        {getQuizScore().correct >= getQuizScore().total * 0.7
+                          ? 'Great understanding! Keep it up!'
+                          : 'Review the explanations above to strengthen your understanding.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import express from 'express';
-import { summarizeYoutube, doubtSolverChat, generateSmartRevision, getSupportedLanguages } from '../controllers/aiController.js';
+import { summarizeYoutube, doubtSolverChat, generateSmartRevision, getSupportedLanguages, youtubeQuiz } from '../controllers/aiController.js';
 import { protect, roleGuard } from '../middleware/authMiddleware.js';
 import { youtubeRateLimiter, doubtRateLimiter, revisionRateLimiter } from '../middleware/aiRateLimiter.js';
 
@@ -7,6 +7,8 @@ const router = express.Router();
 
 // YouTube AI Summarizer
 router.post('/youtube-summary', protect, roleGuard('STUDENT'), youtubeRateLimiter, summarizeYoutube);
+// YouTube Post-Reading Quiz
+router.post('/youtube-quiz', protect, roleGuard('STUDENT'), youtubeRateLimiter, youtubeQuiz);
 // Backward compatibility
 router.post('/youtube', protect, roleGuard('STUDENT', 'TEACHER', 'ADMIN'), youtubeRateLimiter, summarizeYoutube);
 

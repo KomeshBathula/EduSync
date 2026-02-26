@@ -4,6 +4,9 @@ import { generateQuizFromGroq } from '../services/ai/groqQuizService.js';
 import { updateStudentGraph } from '../services/ai/weakAreaDetector.js';
 import { evaluateRisk } from '../services/ai/predictionEngine.js';
 import { evaluateAssignment } from '../services/ai/assignmentEvaluator.js';
+import { logActivity } from '../services/activityLogService.js';
+import { notifyStudentsInContext } from '../services/notificationService.js';
+import { cleanupExamSession, updateBehaviorProfile, checkSessionLocked } from '../services/integrityService.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -53,10 +56,31 @@ export const generateQuiz = async (req, res) => {
             status: 'PUBLISHED'
         });
 
+        // Faculty activity tracking (fire-and-forget)
+        logActivity({
+            actorId: req.user._id,
+            actionType: 'QUIZ_CREATE',
+            referenceId: quiz._id,
+            referenceModel: 'Quiz',
+            academicContextId: targetAudienceId,
+            description: `Generated quiz: ${quiz.title} (${generatedQuestions.length} questions)`,
+        });
+
+        // Notify students in the target section
+        if (targetAudienceId) {
+            notifyStudentsInContext({
+                academicContextId: targetAudienceId,
+                title: 'New Quiz Available',
+                message: `A new quiz "${quiz.title}" has been assigned. Attempt it from your dashboard.`,
+                type: 'QUIZ',
+                referenceId: quiz._id,
+            });
+        }
+
         res.status(201).json(quiz);
     } catch (error) {
         console.error("Quiz Generation Error: ", error);
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 
@@ -98,7 +122,7 @@ export const getQuizForStudent = async (req, res) => {
             questions: sanitizedQuestions
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 
@@ -108,6 +132,16 @@ export const getQuizForStudent = async (req, res) => {
 export const submitQuiz = async (req, res) => {
     try {
         const { timeTakenSeconds, answers } = req.body; // answers: [{ questionId, selectedOptionText, timeSpent }]
+        const quizId = req.params.id;
+        const studentId = req.user._id;
+
+        // Check if quiz was already force-submitted
+        if (checkSessionLocked(quizId, studentId)) {
+            return res.status(409).json({
+                message: 'Quiz already force-submitted due to integrity violations.',
+                forced: true,
+            });
+        }
 
         if (!Array.isArray(answers)) {
             return res.status(400).json({ message: 'Answers must be an array' });
@@ -166,6 +200,12 @@ export const submitQuiz = async (req, res) => {
             console.error('predictionEngine failed:', err.message)
         );
 
+        // Clean up exam session and update behavioral profile
+        cleanupExamSession(quizId, studentId);
+        updateBehaviorProfile(studentId, quizId).catch(err =>
+            console.error('behaviorProfile update failed:', err.message)
+        );
+
         res.status(201).json({
             message: 'Quiz evaluated successfully',
             marksAssigned,
@@ -173,7 +213,7 @@ export const submitQuiz = async (req, res) => {
             weakNodesDetected: weakNodes
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 
@@ -192,8 +232,17 @@ export const deleteQuiz = async (req, res) => {
         await QuizResult.deleteMany({ quizId: quiz._id });
         await quiz.deleteOne();
 
+        // Faculty activity tracking
+        logActivity({
+            actorId: req.user._id,
+            actionType: 'QUIZ_DELETE',
+            referenceId: quizId,
+            referenceModel: 'Quiz',
+            description: `Deleted quiz: ${quiz.title}`,
+        });
+
         res.json({ message: 'Quiz deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };

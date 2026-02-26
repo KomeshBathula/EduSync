@@ -5,7 +5,6 @@ import QuizResult from '../models/QuizResult.js';
 import User from '../models/User.js';
 
 const buildRadarData = (topicTotals) => {
-    const defaultSubjects = ['Arrays', 'Trees', 'Sorting', 'Graphs', 'DP', 'HashMaps'];
     const baseScore = 150;
 
     const computeScore = (fails) => {
@@ -13,23 +12,15 @@ const buildRadarData = (topicTotals) => {
         return baseScore - penalty;
     };
 
-    const radarData = defaultSubjects.map((subject) => ({
+    // Build radar data purely from actual quiz topics — no hardcoded defaults
+    const subjects = Object.keys(topicTotals);
+    if (subjects.length === 0) return [];
+
+    return subjects.map((subject) => ({
         subject,
-        A: computeScore(topicTotals[subject] || 0),
+        A: computeScore(topicTotals[subject]),
         fullMark: baseScore
     }));
-
-    Object.keys(topicTotals).forEach((subject) => {
-        if (!defaultSubjects.includes(subject)) {
-            radarData.push({
-                subject,
-                A: computeScore(topicTotals[subject]),
-                fullMark: baseScore
-            });
-        }
-    });
-
-    return radarData;
 };
 
 const mapRiskScore = (avgAccuracy, riskLevel) => {

@@ -107,7 +107,7 @@ const FALLBACK_RESPONSE = {
 };
 
 // ─── Main Service Function ────────────────────────────────────────
-export const summarizeYoutubeVideo = async ({ url, language = 'English', userId = 'unknown' }) => {
+export const summarizeYoutubeVideo = async ({ url, language = 'English', userId = 'unknown', noteSize = 'Medium' }) => {
   // Step 1: Validate URL
   const validation = validateYoutubeUrl(url);
   if (!validation.valid) {
@@ -146,7 +146,9 @@ export const summarizeYoutubeVideo = async ({ url, language = 'English', userId 
   }));
 
   // Step 5: Build prompt and call Groq
-  const prompt = buildYoutubeSummaryPrompt({ transcript: trimmedTranscript, language });
+  const validNoteSizes = ['Small', 'Medium', 'Detailed'];
+  const normalizedNoteSize = validNoteSizes.includes(noteSize) ? noteSize : 'Medium';
+  const prompt = buildYoutubeSummaryPrompt({ transcript: trimmedTranscript, language, noteSize: normalizedNoteSize });
 
   const rawResponse = await chatCompletion({
     messages: [

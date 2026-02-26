@@ -17,16 +17,45 @@ Only provide factually accurate information. If uncertain, state it explicitly w
 Never fabricate citations, statistics, or references.`;
 
 // ─── YouTube Summarizer ───────────────────────────────────────────
-export const buildYoutubeSummaryPrompt = ({ transcript, language = 'English' }) => {
+export const buildYoutubeSummaryPrompt = ({ transcript, language = 'English', noteSize = 'Medium' }) => {
   const lang = validateLanguage(language);
   const langDirective = lang !== 'English'
     ? `\nGenerate the entire response in ${lang}. Maintain academic terminology accurately.`
     : '';
 
+  // Note size configuration
+  const sizeConfig = {
+    Small: {
+      summaryLength: '2-3 sentences',
+      conceptCount: '2-3',
+      noteCount: '1-2',
+      questionCount: '1-2',
+      noteDetail: 'brief bullet points',
+    },
+    Medium: {
+      summaryLength: '2-3 paragraphs',
+      conceptCount: '4-6',
+      noteCount: '3-5',
+      questionCount: '3-5',
+      noteDetail: 'moderate detail (3-5 sentences each)',
+    },
+    Detailed: {
+      summaryLength: '4-6 paragraphs with thorough analysis',
+      conceptCount: '6-10',
+      noteCount: '5-8',
+      questionCount: '5-8',
+      noteDetail: 'comprehensive coverage (5-10 sentences each with examples)',
+    },
+  };
+
+  const config = sizeConfig[noteSize] || sizeConfig.Medium;
+
   return {
     system: `${SYSTEM_PREAMBLE}
 You specialize in analyzing educational video transcripts and producing structured summaries.${langDirective}`,
-    user: `Analyze the following educational video transcript and produce a comprehensive structured summary.
+    user: `Analyze the following educational video transcript and produce a structured summary.
+
+NOTE SIZE: ${noteSize} — Follow the detail level instructions carefully.
 
 TRANSCRIPT:
 """
@@ -36,7 +65,7 @@ ${transcript}
 Respond STRICTLY in this JSON format. No extra text outside JSON:
 {
   "title": "A descriptive title for the video content",
-  "summary": "A comprehensive 2-3 paragraph summary of the entire video content",
+  "summary": "A ${config.summaryLength} summary of the entire video content",
   "keyConcepts": [
     {
       "concept": "Name of the concept",
@@ -46,7 +75,7 @@ Respond STRICTLY in this JSON format. No extra text outside JSON:
   "detailedNotes": [
     {
       "topic": "Section topic",
-      "content": "Detailed notes for this section"
+      "content": "Notes for this section — ${config.noteDetail}"
     }
   ],
   "practiceQuestions": [
@@ -59,9 +88,9 @@ Respond STRICTLY in this JSON format. No extra text outside JSON:
 }
 
 Rules:
-- Provide 4-6 key concepts
-- Provide 3-5 detailed note sections
-- Generate 3-5 practice questions
+- Provide ${config.conceptCount} key concepts
+- Provide ${config.noteCount} detailed note sections
+- Generate ${config.questionCount} practice questions
 - The timestamps array can be empty if not inferable from transcript
 - All content must be factually derived from the transcript
 - Do NOT hallucinate or add information not present in the transcript`
@@ -198,3 +227,107 @@ export const wrapMultilingual = (prompt, language) => {
 };
 
 export { SUPPORTED_LANGUAGES, validateLanguage };
+
+// ─── YouTube Post-Reading Quiz ────────────────────────────────────
+export const buildYoutubeQuizPrompt = ({ summary, keyConcepts = [], title = '', riskLevel = 'LOW' }) => {
+  // Risk-adaptive difficulty
+  const difficultyConfig = {
+    LOW: { difficulty: 'moderate to challenging', count: 5 },
+    MEDIUM: { difficulty: 'moderate', count: 5 },
+    HIGH: { difficulty: 'basic to moderate (focus on core concepts)', count: 4 },
+  };
+
+  const config = difficultyConfig[riskLevel] || difficultyConfig.LOW;
+  const conceptsStr = keyConcepts.length > 0
+    ? keyConcepts.map(c => typeof c === 'string' ? c : c.concept).join(', ')
+    : 'general concepts from the summary';
+
+  return {
+    system: `${SYSTEM_PREAMBLE}
+You generate multiple choice comprehension quizzes based on educational video summaries.
+Adapt difficulty based on the student's level: ${config.difficulty}.`,
+    user: `Generate a post-reading comprehension quiz based on this video content.
+
+Title: ${title}
+Key Concepts: ${conceptsStr}
+Summary: ${summary}
+
+Generate exactly ${config.count} multiple choice questions.
+
+Respond STRICTLY in this JSON format:
+{
+  "questions": [
+    {
+      "questionText": "The quiz question",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctOptionIndex": 0,
+      "explanation": "Brief explanation of why this is the correct answer"
+    }
+  ]
+}
+
+Rules:
+- Each question must have exactly 4 options
+- One clear correct answer per question
+- Questions must be based ONLY on the provided summary and concepts
+- Include a mix of recall, comprehension, and application questions
+- Difficulty level: ${config.difficulty}
+- Do NOT hallucinate information not in the source material`
+  };
+};
+
+// ─── Adaptive Recommendation Engine Prompt ────────────────────────
+export const buildRecommendationPrompt = ({ weakTopics = [], riskLevel = 'LOW', recentScores = [], availableResources = [] }) => {
+  const topicsStr = weakTopics.length > 0
+    ? weakTopics.map(t => `${t.topicName} (failed ${t.failureCount} times)`).join(', ')
+    : 'None identified';
+
+  const scoresStr = recentScores.length > 0
+    ? recentScores.map(s => `${s.accuracy}%`).join(', ')
+    : 'No recent data';
+
+  const resourcesStr = availableResources.length > 0
+    ? availableResources.map(r => `"${r.title}"`).join(', ')
+    : 'No specific materials available';
+
+  return {
+    system: `${SYSTEM_PREAMBLE}
+You are a learning path advisor that provides actionable study recommendations.`,
+    user: `Provide adaptive learning recommendations for a student:
+
+Weak Topics: ${topicsStr}
+Risk Level: ${riskLevel}
+Recent Quiz Scores: ${scoresStr}
+Available Materials: ${resourcesStr}
+
+Respond STRICTLY in this JSON format:
+{
+  "priorityTopics": [
+    {
+      "topic": "Topic name",
+      "urgency": "HIGH|MEDIUM|LOW",
+      "reason": "Why this should be prioritized"
+    }
+  ],
+  "studyPlan": [
+    {
+      "action": "Specific actionable study task",
+      "estimatedTime": "30 mins",
+      "targetWeakness": "The weak area this addresses"
+    }
+  ],
+  "youtubeSearchTerms": [
+    "Suggested YouTube search query for learning"
+  ],
+  "motivationalNote": "A brief encouraging message based on their situation"
+}
+
+Rules:
+- List 2-4 priority topics
+- Provide 3-5 study plan actions
+- Suggest 2-3 YouTube search terms
+- Be specific and actionable, not vague
+- HIGH risk students need more structured, basic plans
+- LOW risk students benefit from advanced challenges`
+  };
+};

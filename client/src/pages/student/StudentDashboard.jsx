@@ -6,14 +6,17 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
-import { BookOpen, AlertTriangle, TrendingUp, Cpu, LogOut, Video, MessageSquare, ArrowRight, FileText } from 'lucide-react';
+import { BookOpen, AlertTriangle, TrendingUp, Cpu, LogOut, Video, MessageSquare, ArrowRight, FileText, Sparkles, Loader2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import NotificationBell from '../../components/common/NotificationBell';
 
 const StudentDashboard = () => {
     const navigate = useNavigate();
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [recommendations, setRecommendations] = useState(null);
+    const [recsLoading, setRecsLoading] = useState(false);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -29,6 +32,18 @@ const StudentDashboard = () => {
 
         fetchDashboardData();
     }, []);
+
+    const handleGetRecommendations = async () => {
+        setRecsLoading(true);
+        try {
+            const res = await api.get('/api/student/recommendations');
+            setRecommendations(res.data);
+        } catch (error) {
+            console.error('Failed to get recommendations:', error);
+        } finally {
+            setRecsLoading(false);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -60,6 +75,7 @@ const StudentDashboard = () => {
                         <BookOpen className="w-4 h-4" />
                         <span className="font-medium text-sm">{user.contextString}</span>
                     </Badge>
+                    <NotificationBell />
                     <Button variant="danger" onClick={handleLogout} className="px-4 py-2 text-sm flex items-center gap-2">
                         <LogOut className="w-4 h-4" />
                         Logout
@@ -278,6 +294,85 @@ const StudentDashboard = () => {
                                 ))
                             )}
                         </ul>
+                    </Card>
+
+                    {/* AI Adaptive Recommendations */}
+                    <Card className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-primary-light/10 text-primary border border-primary/20">
+                                <Sparkles className="w-5 h-5" />
+                            </div>
+                            <h3 className="text-lg font-bold text-text-primary">AI Study Plan</h3>
+                        </div>
+
+                        {!recommendations && !recsLoading && (
+                            <button
+                                onClick={handleGetRecommendations}
+                                className="w-full py-3 bg-primary hover:bg-primary-light text-text-inverse font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                            >
+                                <Sparkles className="w-4 h-4" /> Get Personalized Recommendations
+                            </button>
+                        )}
+
+                        {recsLoading && (
+                            <div className="flex flex-col items-center py-6">
+                                <Loader2 className="w-6 h-6 text-primary animate-spin mb-2" />
+                                <p className="text-xs text-text-secondary">Analyzing your learning profile...</p>
+                            </div>
+                        )}
+
+                        {recommendations && (
+                            <div className="space-y-4">
+                                {recommendations.priorityTopics?.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Priority Topics</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {recommendations.priorityTopics.map((t, i) => (
+                                                <Badge key={i} color="danger" className="text-xs">{t}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {recommendations.studyPlan?.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Study Plan</h4>
+                                        <ul className="space-y-2">
+                                            {recommendations.studyPlan.map((step, i) => (
+                                                <li key={i} className="text-sm text-text-primary flex items-start gap-2">
+                                                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                                    {step}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {recommendations.youtubeSearchTerms?.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Recommended Searches</h4>
+                                        <div className="space-y-1.5">
+                                            {recommendations.youtubeSearchTerms.map((term, i) => (
+                                                <div key={i} className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:text-primary-light transition-colors" onClick={() => navigate('/student/youtube')}>
+                                                    <Search className="w-3 h-3" />
+                                                    <span className="underline underline-offset-2">{term}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {recommendations.motivationalNote && (
+                                    <div className="p-3 rounded-lg bg-success/5 border border-success/20 mt-2">
+                                        <p className="text-xs text-success font-medium">{recommendations.motivationalNote}</p>
+                                    </div>
+                                )}
+
+                                <button onClick={handleGetRecommendations} className="w-full mt-2 py-2 text-sm text-primary font-medium hover:bg-primary/5 rounded-lg border border-primary/20 transition-all flex items-center justify-center gap-2">
+                                    <Sparkles className="w-3 h-3" /> Refresh
+                                </button>
+                            </div>
+                        )}
                     </Card>
                 </div>
             </div>

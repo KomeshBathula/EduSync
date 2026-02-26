@@ -45,3 +45,26 @@ export const removeMaterial = async ({ materialId, requesterId }) => {
 
     await material.deleteOne();
 };
+
+/**
+ * List materials for an academic context (without file binary data).
+ */
+export const listMaterialsByContext = async (contextId) => {
+    return Material.find({ academicContext: contextId })
+        .select('-fileData')
+        .populate('uploadedBy', 'name')
+        .sort({ createdAt: -1 });
+};
+
+/**
+ * Fetch a material by ID (with file binary data for download).
+ */
+export const getMaterialById = async (materialId) => {
+    const material = await Material.findById(materialId);
+    if (!material) {
+        const error = new Error('Material not found');
+        error.statusCode = 404;
+        throw error;
+    }
+    return material;
+};

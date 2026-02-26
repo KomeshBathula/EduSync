@@ -39,7 +39,22 @@ const UserSchema = new mongoose.Schema({
             topicName: String,
             failureCount: Number,
         }
-    ]
+    ],
+
+    // ─── ML-Ready Data Collection Fields ──────────────────────────
+    loginCount: { type: Number, default: 0 },
+    lastLoginAt: { type: Date },
+    totalTimeSpentMinutes: { type: Number, default: 0 },
+    materialViewCount: { type: Number, default: 0 },
+    youtubeQuizAttempts: { type: Number, default: 0 },
+    aiDoubtUsageCount: { type: Number, default: 0 },
+    revisionPlanCount: { type: Number, default: 0 },
+    youtubeSummaryCount: { type: Number, default: 0 },
+
+    // ─── Integrity / Behavioral Fields ──────────────────────────
+    integrityScore: { type: Number, default: 100, min: 0, max: 100 },
+    totalViolations: { type: Number, default: 0 },
+    suspiciousExamCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
 export default mongoose.model('User', UserSchema);
