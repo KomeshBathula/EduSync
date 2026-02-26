@@ -245,7 +245,7 @@ const StudentDashboard = () => {
                                 <p className="text-slate-500 italic text-sm">No notes have been uploaded to your section yet.</p>
                             ) : (
                                 recommendedResources.map((res, i) => (
-                                    <li key={i} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10" onClick={() => window.open(`http://localhost:5000${res.url}`, '_blank')}>
+                                    <li key={i} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10" onClick={() => window.open(`${window.location.origin}${res.url}`, '_blank')}>
                                         <div className="flex gap-3 items-center">
                                             <div className="p-2 rounded bg-indigo-500/20">
                                                 <div className="w-4 h-4 bg-indigo-500 rounded-sm" />

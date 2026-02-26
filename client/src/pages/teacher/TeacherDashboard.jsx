@@ -391,7 +391,7 @@ const TeacherDashboard = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <button onClick={() => window.open(`http://localhost:5000${mat.fileUrl}`, '_blank')} className="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-medium rounded hover:bg-indigo-500/30 transition-colors">
+                                        <button onClick={() => window.open(`${window.location.origin}${mat.fileUrl}`, '_blank')} className="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-medium rounded hover:bg-indigo-500/30 transition-colors">
                                             View
                                         </button>
                                         <button onClick={() => handleDeleteMaterial(mat._id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete Material">
