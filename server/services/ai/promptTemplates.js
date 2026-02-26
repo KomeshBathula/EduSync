@@ -277,7 +277,7 @@ Rules:
 };
 
 // ─── Adaptive Recommendation Engine Prompt ────────────────────────
-export const buildRecommendationPrompt = ({ weakTopics = [], riskLevel = 'LOW', recentScores = [], availableResources = [] }) => {
+export const buildRecommendationPrompt = ({ weakTopics = [], riskLevel = 'LOW', recentScores = [], availableResources = [], personalization = null }) => {
   const topicsStr = weakTopics.length > 0
     ? weakTopics.map(t => `${t.topicName} (failed ${t.failureCount} times)`).join(', ')
     : 'None identified';
@@ -290,6 +290,14 @@ export const buildRecommendationPrompt = ({ weakTopics = [], riskLevel = 'LOW', 
     ? availableResources.map(r => `"${r.title}"`).join(', ')
     : 'No specific materials available';
 
+  const personalizationStr = personalization
+    ? `\nPersonalization Context:
+- Quiz Difficulty Target: ${personalization.quizDifficulty}
+- Revision Intensity: ${personalization.revisionIntensity}
+- Study Plan Style: ${personalization.studyPlanDetail}
+- Question Style: ${personalization.questionStyle}`
+    : '';
+
   return {
     system: `${SYSTEM_PREAMBLE}
 You are a learning path advisor that provides actionable study recommendations.`,
@@ -298,23 +306,15 @@ You are a learning path advisor that provides actionable study recommendations.`
 Weak Topics: ${topicsStr}
 Risk Level: ${riskLevel}
 Recent Quiz Scores: ${scoresStr}
-Available Materials: ${resourcesStr}
+Available Materials: ${resourcesStr}${personalizationStr}
 
 Respond STRICTLY in this JSON format:
 {
   "priorityTopics": [
-    {
-      "topic": "Topic name",
-      "urgency": "HIGH|MEDIUM|LOW",
-      "reason": "Why this should be prioritized"
-    }
+    "Topic name that should be prioritized"
   ],
   "studyPlan": [
-    {
-      "action": "Specific actionable study task",
-      "estimatedTime": "30 mins",
-      "targetWeakness": "The weak area this addresses"
-    }
+    "A specific actionable study task with estimated time"
   ],
   "youtubeSearchTerms": [
     "Suggested YouTube search query for learning"

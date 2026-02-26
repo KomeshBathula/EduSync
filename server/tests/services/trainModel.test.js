@@ -57,11 +57,27 @@ describe('trainModel', () => {
   });
 
   describe('collectTrainingData', () => {
-    it('should return empty arrays when no students exist', async () => {
-      const { features, labels } = await collectTrainingData();
+    it('should augment with synthetic data when no real students exist', async () => {
+      const { features, labels, synthetic } = await collectTrainingData();
 
-      expect(features).toEqual([]);
-      expect(labels).toEqual([]);
+      // With 0 real students, synthetic augmentation kicks in (40 per class × 3 = 120)
+      expect(features.length).toBe(120);
+      expect(labels.length).toBe(120);
+      expect(synthetic).toBe(true);
+
+      // Labels should include all 3 classes
+      expect(labels).toContain(0); // LOW
+      expect(labels).toContain(1); // MEDIUM
+      expect(labels).toContain(2); // HIGH
+
+      // Each feature vector should have 12 elements
+      features.forEach(v => {
+        expect(v).toHaveLength(12);
+        v.forEach(val => {
+          expect(val).toBeGreaterThanOrEqual(0);
+          expect(val).toBeLessThanOrEqual(1);
+        });
+      });
     });
   });
 });

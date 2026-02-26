@@ -1,0 +1,47 @@
+services:
+  # Backend API Service
+  - type: web
+    name: edusync-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ENABLE_ML
+        value: true
+      - key: MODEL_VERSION
+        value: v1
+      - key: ML_CONFIDENCE_THRESHOLD
+        value: 0.65
+      - key: STRICT_EXAM_MODE
+        value: true
+
+  # Frontend Static Site
+  - type: web
+    name: edusync-frontend
+    runtime: static
+    region: oregon
+    plan: free
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false

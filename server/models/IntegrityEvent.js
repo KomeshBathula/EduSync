@@ -38,6 +38,16 @@ const IntegrityEventSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  terminationTriggered: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  terminationReason: {
+    type: String,
+    enum: ['NONE', 'STRICT_MODE_VIOLATION', 'THRESHOLD_EXCEEDED', 'MANUAL'],
+    default: 'NONE',
+  },
 }, { timestamps: true });
 
 // Compound index for efficient queries

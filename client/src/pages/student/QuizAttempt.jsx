@@ -32,6 +32,7 @@ const QuizAttempt = () => {
     const [toastMsg, setToastMsg] = useState('');
     const [secureReady, setSecureReady] = useState(false);
     const [forcedSubmit, setForcedSubmit] = useState(false);
+    const [strictMode, setStrictMode] = useState(false);
 
     const controllerRef = useRef(null);
     const quizDataRef = useRef(null);
@@ -80,6 +81,47 @@ const QuizAttempt = () => {
         }
     }, [id, showToast]);
 
+    // ── Handle strict mode force-submit (immediate termination) ─────
+    const handleForceSubmit = useCallback(async (violationType, metadata = {}) => {
+        if (forcedSubmit) return; // Already terminated
+
+        setForcedSubmit(true);
+        controllerRef.current?.deactivate();
+
+        try {
+            const res = await api.post(`/api/quiz/${id}/force-submit`, {
+                violationType,
+                answers: answersRef.current,
+            });
+
+            setResult({
+                score: res.data.marksAssigned ?? 0,
+                max: quizDataRef.current?.questions?.length || 0,
+                accuracy: res.data.accuracyPercentage ?? 0,
+                weakNodes: [],
+                timeTaken: 0,
+                forced: true,
+                terminationReason: res.data.terminationReason,
+            });
+
+            showToast('🚨 Quiz terminated due to security violation');
+        } catch (err) {
+            console.error('Force submit error:', err);
+            if (err.response?.status === 409) {
+                // Already force-submitted
+                setResult({
+                    score: 0,
+                    max: 0,
+                    accuracy: 0,
+                    weakNodes: [],
+                    timeTaken: 0,
+                    forced: true,
+                    terminationReason: 'Security violation detected',
+                });
+            }
+        }
+    }, [id, answersRef, quizDataRef, forcedSubmit, showToast]);
+
     // ── Format violation type for display ─────────────────────────
     const formatViolationType = (type) => {
         const labels = {
@@ -102,7 +144,9 @@ const QuizAttempt = () => {
                 // Fetch violation threshold from server
                 const configRes = await api.get('/api/quiz/integrity/config');
                 const threshold = configRes.data.violationThreshold || 3;
+                const isStrictMode = configRes.data.strictMode || false;
                 setViolationThreshold(threshold);
+                setStrictMode(isStrictMode);
 
                 // Fetch quiz
                 const res = await api.get(`/api/quiz/${id}/attempt`);
@@ -113,10 +157,13 @@ const QuizAttempt = () => {
                 // Initialize secure exam controller
                 const controller = createSecureExamController({
                     threshold,
+                    strictMode: isStrictMode,
                     onViolation: (eventType, metadata) => {
                         reportViolationToServer(eventType, metadata);
                     },
-                    onAutoSubmit: () => {},
+                    onForceSubmit: (eventType, metadata) => {
+                        handleForceSubmit(eventType, metadata);
+                    },
                 });
 
                 controllerRef.current = controller;
@@ -133,7 +180,7 @@ const QuizAttempt = () => {
         return () => {
             controllerRef.current?.deactivate();
         };
-    }, [id, navigate, reportViolationToServer]);
+    }, [id, navigate, reportViolationToServer, handleForceSubmit]);
 
     // ── Activate secure mode after user clicks Start ──────────────
     const [examStarted, setExamStarted] = useState(false);
@@ -266,14 +313,22 @@ const QuizAttempt = () => {
             <div className="min-h-screen p-8 flex items-center justify-center">
                 <Card className="max-w-md w-full text-center space-y-6 p-8">
                     {result.forced && (
-                        <div className="bg-danger/10 border border-danger/30 rounded-xl p-4 mb-4">
-                            <div className="flex items-center justify-center gap-2 text-danger font-bold text-sm mb-1">
-                                <ShieldAlert className="w-5 h-5" /> Quiz Auto-Submitted
+                        <div className={`${strictMode ? 'bg-danger/10 border border-danger/30' : 'bg-warning/10 border border-warning/30'} rounded-xl p-4 mb-4`}>
+                            <div className={`flex items-center justify-center gap-2 ${strictMode ? 'text-danger' : 'text-warning'} font-bold text-sm mb-1`}>
+                                <ShieldAlert className="w-5 h-5" /> 
+                                {strictMode ? '🚨 Quiz Terminated' : 'Auto-Submitted'}
                             </div>
-                            <p className="text-xs text-danger/80">
-                                This quiz was automatically submitted due to integrity violations.
-                                Your teacher has been notified.
+                            <p className={`text-xs ${strictMode ? 'text-danger/80' : 'text-warning/80'}`}>
+                                {strictMode 
+                                    ? 'Your quiz was terminated due to a security violation. No second chances in strict lockdown mode.'
+                                    : 'This quiz was automatically submitted due to integrity violations. Your teacher has been notified.'
+                                }
                             </p>
+                            {result.terminationReason && (
+                                <p className={`text-xs mt-2 ${strictMode ? 'text-danger/70' : 'text-warning/70'}`}>
+                                    <strong>Reason:</strong> {result.terminationReason}
+                                </p>
+                            )}
                         </div>
                     )}
                     <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${result.accuracy >= 60 ? 'bg-success/20' : 'bg-danger/20'}`}>
@@ -329,7 +384,7 @@ const QuizAttempt = () => {
                         </div>
                     )}
 
-                    <button onClick={() => navigate('/student/dashboard')} className="w-full mt-6 px-6 py-3 bg-primary text-text-inverse rounded-xl font-semibold hover:bg-primary-hover transition-colors">Return to Dashboard</button>
+                    <button onClick={() => navigate(`/student/quiz/${id}/review`)} className="w-full mt-6 px-6 py-3 bg-primary text-text-inverse rounded-xl font-semibold hover:bg-primary-hover transition-colors">View Detailed Review</button>
                 </Card>
             </div>
         );

@@ -164,22 +164,37 @@ export const summarizeYoutubeVideo = async ({ url, language = 'English', userId 
 
   // Step 6: Parse and validate response
   const parsed = safeParseJSON(rawResponse, null);
-  if (!parsed || !parsed.summary) {
+  
+  // Check if parsing failed or summary is missing/empty
+  if (!parsed || !parsed.summary || typeof parsed.summary !== 'string' || parsed.summary.trim().length === 0) {
     console.error(JSON.stringify({
       level: 'error',
       service: 'youtubeSummarizer',
       event: 'invalid_ai_response',
       userId,
+      reason: !parsed ? 'parse_failed' : !parsed.summary ? 'no_summary' : 'empty_summary',
       rawPreview: rawResponse?.slice(0, 300),
     }));
     return { ...FALLBACK_RESPONSE, videoId: validation.videoId };
   }
 
-  // Step 7: Normalize structure
+  // Step 7: Normalize structure and ensure summary has minimum length
+  const normalizedSummary = parsed.summary.trim();
+  if (normalizedSummary.length < 50) {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      service: 'youtubeSummarizer',
+      event: 'short_summary',
+      userId,
+      summaryLength: normalizedSummary.length,
+    }));
+    // Still return it but user might have issues generating quiz
+  }
+
   return {
     videoId: validation.videoId,
     title: parsed.title || 'Untitled Video Summary',
-    summary: parsed.summary || '',
+    summary: normalizedSummary,
     keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
     detailedNotes: Array.isArray(parsed.detailedNotes) ? parsed.detailedNotes : [],
     practiceQuestions: Array.isArray(parsed.practiceQuestions) ? parsed.practiceQuestions : [],

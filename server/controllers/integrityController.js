@@ -89,8 +89,10 @@ export const getIntegritySummary = async (req, res) => {
  */
 export const getIntegrityConfig = async (req, res) => {
   try {
+    const strictMode = process.env.STRICT_EXAM_MODE === 'true';
     res.json({
       violationThreshold: getViolationThreshold(),
+      strictMode,
     });
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message });

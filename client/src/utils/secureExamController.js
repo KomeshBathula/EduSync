@@ -54,21 +54,35 @@ const META_COMBOS = [
  *
  * @param {Object} options
  * @param {Function} options.onViolation — Called with (violationType, metadata) on each violation
- * @param {Function} options.onAutoSubmit — Called when the server forces submission
- * @param {number}   options.threshold   — Violation threshold from server config
+ * @param {Function} options.onForceSubmit — Called when strict mode triggers immediate termination
+ * @param {boolean}  options.strictMode   — If true, first violation = immediate termination
+ * @param {number}   options.threshold   — Violation threshold from server config (normal mode only)
  */
-export const createSecureExamController = ({ onViolation, onAutoSubmit, threshold = 3 }) => {
+export const createSecureExamController = ({ onViolation, onForceSubmit, strictMode = false, threshold = 3 }) => {
   let active = false;
   let violationCount = 0;
   let handlers = [];
   let originalUserSelect = '';
   let isFullscreen = false;
   let fullscreenRequested = false;
+  let lockdownActive = false;
 
   // ── Internal: report violation ──────────────────────────────────
   const reportViolation = (type, metadata = {}) => {
-    if (!active) return;
+    if (!active || lockdownActive) return;
+
     violationCount += 1;
+
+    // STRICT MODE: Lock immediately on first violation
+    if (strictMode) {
+      lockdownActive = true;
+      if (onForceSubmit) {
+        onForceSubmit(type, { ...metadata, violationCount });
+      }
+      return;
+    }
+
+    // NORMAL MODE: Report to server
     onViolation(type, { ...metadata, localCount: violationCount });
   };
 
@@ -266,6 +280,7 @@ export const createSecureExamController = ({ onViolation, onAutoSubmit, threshol
     exitFullscreen,
     getViolationCount: () => violationCount,
     isActive: () => active,
+    isLockedDown: () => lockdownActive,
     VIOLATION_TYPES,
   };
 };

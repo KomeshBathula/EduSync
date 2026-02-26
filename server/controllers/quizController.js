@@ -1,5 +1,6 @@
 import Quiz from '../models/Quiz.js';
 import QuizResult from '../models/QuizResult.js';
+import IntegrityEvent from '../models/IntegrityEvent.js';
 import { generateQuizFromGroq } from '../services/ai/groqQuizService.js';
 import { updateStudentGraph } from '../services/ai/weakAreaDetector.js';
 import { evaluateRisk } from '../services/ai/predictionEngine.js';
@@ -7,6 +8,7 @@ import { evaluateAssignment } from '../services/ai/assignmentEvaluator.js';
 import { logActivity } from '../services/activityLogService.js';
 import { notifyStudentsInContext } from '../services/notificationService.js';
 import { cleanupExamSession, updateBehaviorProfile, checkSessionLocked } from '../services/integrityService.js';
+import examSessionManager from '../services/examSessionManager.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -246,3 +248,206 @@ export const deleteQuiz = async (req, res) => {
         res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
+
+// @desc    Get Quiz Review with explanations
+// @route   GET /api/quiz/:id/review
+// @access  Student
+export const getQuizReview = async (req, res) => {
+    try {
+        const quizId = req.params.id;
+        const studentId = req.user._id;
+
+        // Verify that the student has attempted this quiz
+        const quizResult = await QuizResult.findOne({
+            quizId,
+            studentId,
+        });
+
+        if (!quizResult) {
+            return res.status(403).json({
+                message: 'You must attempt this quiz before viewing the review.'
+            });
+        }
+
+        // Fetch the quiz with all questions
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
+
+        // Build review structure with student answers
+        const reviewQuestions = quiz.questions.map((q, idx) => {
+            const metric = quizResult.questionMetrics.find(
+                m => m.questionId.toString() === q._id.toString()
+            );
+
+            return {
+                position: idx + 1,
+                questionText: q.questionText,
+                options: q.options,
+                correctOptionIndex: q.correctOptionIndex,
+                studentSelectedIndex: q.options.indexOf(
+                    // Find which option the student selected based on metrics
+                    metric ? q.options[q.correctOptionIndex] : null
+                ),
+                isCorrect: metric?.isCorrect || false,
+                explanation: q.explanation || 'No explanation available',
+                topicTag: q.topicTag,
+            };
+        });
+
+        res.json({
+            success: true,
+            quizId: quiz._id,
+            quizTitle: quiz.title,
+            score: quizResult.totalScore,
+            accuracy: Math.round(quizResult.accuracyPercentage),
+            timeTakenSeconds: quizResult.timeTakenSeconds,
+            attemptedAt: quizResult.createdAt,
+            questions: reviewQuestions,
+        });
+    } catch (error) {
+        console.error(JSON.stringify({
+            level: 'error',
+            service: 'quizController',
+            event: 'quiz_review_failed',
+            error: error.message,
+        }));
+        res.status(error.statusCode || 500).json({ message: error.message });
+    }
+};
+
+// @desc    Force-submit quiz due to security violation
+// @route   POST /api/quiz/:id/force-submit
+// @access  Student (protected)
+//
+// ULTRA STRICT LOCKDOWN MODE:
+// - Lock session immediately
+// - Calculate score from saved answers
+// - Mark as FORCED_SECURITY submission
+// - Log integrity event with termination reason
+// - Prevent duplicate submissions (409 Conflict)
+export const forceSubmitQuiz = async (req, res) => {
+    try {
+        const quizId = req.params.id;
+        const studentId = req.user._id;
+        const { violationType, answers } = req.body;
+
+        // Check if session is already locked (prevent duplicate submissions)
+        if (examSessionManager.isSessionLocked(quizId, studentId)) {
+            return res.status(409).json({
+                message: 'Quiz session already locked due to security violation.',
+                terminated: true,
+            });
+        }
+
+        // Lock session immediately
+        examSessionManager.lockSession(quizId, studentId);
+
+        // Fetch quiz
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
+
+        // Calculate score from saved answers (or zero if none)
+        let totalScore = 0;
+        let maxScore = 0;
+        let weakNodes = [];
+        const questionMetrics = [];
+
+        const answerMap = answers ? answers.reduce((acc, a) => {
+            acc[a.questionId] = a;
+            return acc;
+        }, {}) : {};
+
+        quiz.questions.forEach(q => {
+            maxScore += q.weight;
+            const ans = answerMap[q._id];
+            if (ans) {
+                const isCorrect = q.options[q.correctOptionIndex] === ans.selectedOptionText;
+                if (isCorrect) {
+                    totalScore += q.weight;
+                } else {
+                    weakNodes.push(q.topicTag);
+                }
+                questionMetrics.push({
+                    questionId: q._id,
+                    isCorrect,
+                    timeSpent: ans.timeSpent || 0,
+                });
+            }
+        });
+
+        const accuracyPercentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+        const marksAssigned = await evaluateAssignment(totalScore, maxScore);
+
+        // Create forced submission result
+        const result = await QuizResult.create({
+            studentId,
+            quizId,
+            totalScore,
+            timeTakenSeconds: 0,
+            accuracyPercentage,
+            marksAssigned,
+            questionMetrics,
+            submissionType: 'FORCED_SECURITY',
+            violationType: violationType || 'UNKNOWN',
+            sessionLocked: true,
+        });
+
+        // Log integrity event with termination reason
+        await IntegrityEvent.create({
+            studentId,
+            quizId,
+            eventType: 'MULTIPLE_VIOLATIONS',
+            metadata: { violationType, submissionType: 'FORCED_SECURITY' },
+            autoSubmitted: true,
+            terminationTriggered: true,
+            terminationReason: 'STRICT_MODE_VIOLATION',
+        });
+
+        // AI Services (async, best-effort)
+        updateStudentGraph(studentId, weakNodes).catch(err =>
+            console.error('weakAreaDetector failed in forced submit:', err.message)
+        );
+        evaluateRisk(studentId).catch(err =>
+            console.error('predictionEngine failed in forced submit:', err.message)
+        );
+        updateBehaviorProfile(studentId, quizId).catch(err =>
+            console.error('behaviorProfile update failed in forced submit:', err.message)
+        );
+
+        // Clean up session
+        examSessionManager.clearSession(quizId, studentId);
+
+        console.log(JSON.stringify({
+            level: 'warn',
+            service: 'quizController',
+            event: 'force_submit_executed',
+            quizId,
+            studentId,
+            violationType,
+            accuracy: Math.round(accuracyPercentage),
+        }));
+
+        res.status(201).json({
+            message: 'Quiz force-submitted due to security violation',
+            terminated: true,
+            terminationReason: 'Security violation detected',
+            marksAssigned,
+            accuracyPercentage: Math.round(accuracyPercentage),
+            submissionType: 'FORCED_SECURITY',
+            quizId,
+        });
+    } catch (error) {
+        console.error(JSON.stringify({
+            level: 'error',
+            service: 'quizController',
+            event: 'force_submit_failed',
+            error: error.message,
+        }));
+        res.status(error.statusCode || 500).json({ message: error.message });
+    }
+};
+

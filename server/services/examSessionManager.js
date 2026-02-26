@@ -13,6 +13,7 @@
  */
 
 const VIOLATION_THRESHOLD = parseInt(process.env.EXAM_VIOLATION_THRESHOLD, 10) || 3;
+const STRICT_MODE = process.env.STRICT_EXAM_MODE === 'true';
 
 // TTL for stale sessions (2 hours) — prevents memory leaks
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
@@ -45,12 +46,25 @@ export const recordViolation = (quizId, studentId, eventType, metadata = {}) => 
   const session = getSession(quizId, studentId);
 
   if (session.locked) {
-    return { violationCount: session.violationCount, thresholdReached: true, locked: true };
+    return { violationCount: session.violationCount, thresholdReached: true, locked: true, strictMode: STRICT_MODE };
   }
 
   session.violationCount += 1;
   session.events.push({ eventType, metadata, timestamp: Date.now() });
 
+  // STRICT MODE: Any violation = immediate lock
+  if (STRICT_MODE) {
+    session.locked = true;
+    return {
+      violationCount: session.violationCount,
+      thresholdReached: true,
+      locked: true,
+      strictMode: true,
+      terminationReason: 'STRICT_MODE_VIOLATION',
+    };
+  }
+
+  // NORMAL MODE: Threshold-based
   const thresholdReached = session.violationCount >= VIOLATION_THRESHOLD;
   if (thresholdReached) {
     session.locked = true;
@@ -60,6 +74,7 @@ export const recordViolation = (quizId, studentId, eventType, metadata = {}) => 
     violationCount: session.violationCount,
     thresholdReached,
     locked: session.locked,
+    strictMode: false,
   };
 };
 

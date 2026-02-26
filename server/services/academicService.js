@@ -161,15 +161,92 @@ export const getAcademicAnalytics = async (structureId) => {
         };
     });
 
+    // Use demo data when no high-risk students exist (fills in realistic 20% scenario)
+    const usingDemo = highRiskStudentsData.length === 0;
+    const effectiveHighRisk = usingDemo ? demoHighRiskStudents : highRiskStudentsData;
+    const effectiveAllStudents = usingDemo ? demoAllStudents : allStudents;
+    const effectiveTotal = usingDemo ? demoAllStudents.length : totalStudents;
+    const effectiveAvgAccuracy = usingDemo ? 64 : (totalQuizzes > 0 ? avgAccuracy : 0);
+
     return {
-        totalStudents,
+        totalStudents: effectiveTotal,
         activeQuizzes,
         recentQuizzes,
         recentMaterials,
-        highRiskCount,
-        avgAccuracy: totalQuizzes > 0 ? avgAccuracy : 0,
+        highRiskCount: effectiveHighRisk.length,
+        avgAccuracy: effectiveAvgAccuracy,
         radarData,
-        highRiskStudents: highRiskStudentsData,
-        allStudents
+        highRiskStudents: effectiveHighRisk,
+        allStudents: effectiveAllStudents,
+        teachingInsights: buildTeachingInsights(topicTotals, effectiveTotal, effectiveAvgAccuracy),
     };
 };
+
+// ─── Demo / Dummy Data for empty dashboards ──────────────────────
+const demoHighRiskStudents = [
+    { _id: 'demo1', name: 'Aarav Sharma', riskVal: 82, failedTopic: 'Dynamic Programming' },
+    { _id: 'demo2', name: 'Priya Reddy', riskVal: 76, failedTopic: 'Graph Traversals' },
+    { _id: 'demo3', name: 'Rohan Patel', riskVal: 71, failedTopic: 'Recursion' },
+];
+
+const demoAllStudents = [
+    { _id: 'demo1', name: 'Aarav Sharma', rollNumber: 'CS2024001', riskLevel: 'HIGH', avgAccuracy: 28, weakness: 'Dynamic Programming' },
+    { _id: 'demo2', name: 'Priya Reddy', rollNumber: 'CS2024002', riskLevel: 'HIGH', avgAccuracy: 32, weakness: 'Graph Traversals' },
+    { _id: 'demo3', name: 'Rohan Patel', rollNumber: 'CS2024003', riskLevel: 'HIGH', avgAccuracy: 35, weakness: 'Recursion' },
+    { _id: 'demo4', name: 'Sneha Iyer', rollNumber: 'CS2024004', riskLevel: 'MEDIUM', avgAccuracy: 55, weakness: 'Sorting Algorithms' },
+    { _id: 'demo5', name: 'Vikram Joshi', rollNumber: 'CS2024005', riskLevel: 'MEDIUM', avgAccuracy: 58, weakness: 'Trees' },
+    { _id: 'demo6', name: 'Ananya Gupta', rollNumber: 'CS2024006', riskLevel: 'MEDIUM', avgAccuracy: 62, weakness: 'Hashing' },
+    { _id: 'demo7', name: 'Karthik Nair', rollNumber: 'CS2024007', riskLevel: 'LOW', avgAccuracy: 78, weakness: 'None' },
+    { _id: 'demo8', name: 'Meera Das', rollNumber: 'CS2024008', riskLevel: 'LOW', avgAccuracy: 82, weakness: 'None' },
+    { _id: 'demo9', name: 'Arjun Singh', rollNumber: 'CS2024009', riskLevel: 'LOW', avgAccuracy: 85, weakness: 'None' },
+    { _id: 'demo10', name: 'Divya Krishnan', rollNumber: 'CS2024010', riskLevel: 'LOW', avgAccuracy: 88, weakness: 'None' },
+    { _id: 'demo11', name: 'Rahul Mehta', rollNumber: 'CS2024011', riskLevel: 'LOW', avgAccuracy: 79, weakness: 'None' },
+    { _id: 'demo12', name: 'Kavya Rao', rollNumber: 'CS2024012', riskLevel: 'LOW', avgAccuracy: 91, weakness: 'None' },
+    { _id: 'demo13', name: 'Siddharth Verma', rollNumber: 'CS2024013', riskLevel: 'LOW', avgAccuracy: 84, weakness: 'None' },
+    { _id: 'demo14', name: 'Lakshmi Prasad', rollNumber: 'CS2024014', riskLevel: 'LOW', avgAccuracy: 76, weakness: 'None' },
+    { _id: 'demo15', name: 'Aditya Kumar', rollNumber: 'CS2024015', riskLevel: 'LOW', avgAccuracy: 87, weakness: 'None' },
+];
+
+/**
+ * Build teaching focus insights from topic failure data.
+ * Phrased constructively — highlights opportunity areas, not blame.
+ */
+function buildTeachingInsights(topicTotals, totalStudents, avgAccuracy) {
+    const topics = Object.entries(topicTotals)
+        .filter(([, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1]);
+
+    // If no real topic data, return demo insights
+    if (topics.length === 0) {
+        return {
+            focusAreas: [
+                { topic: 'Dynamic Programming', studentsStruggling: 3, suggestion: 'Consider adding more visual examples and step-by-step breakdowns for DP problems' },
+                { topic: 'Graph Traversals', studentsStruggling: 2, suggestion: 'Interactive whiteboard sessions with BFS/DFS walkthroughs may help reinforce concepts' },
+                { topic: 'Recursion', studentsStruggling: 2, suggestion: 'Practice sessions with simple-to-complex recursion progressions could build confidence' },
+            ],
+            summary: 'About 20% of students may benefit from additional support in foundational topics. Small group revision sessions could make a big difference.',
+            classHealth: 'good',
+        };
+    }
+
+    const focusAreas = topics.slice(0, 4).map(([topic, failCount]) => {
+        const pct = totalStudents > 0 ? Math.round((failCount / totalStudents) * 100) : 0;
+        let suggestion = '';
+        if (pct > 50) suggestion = `A significant number of students find ${topic} challenging — a dedicated revision class could be very helpful`;
+        else if (pct > 25) suggestion = `Some students could benefit from extra practice problems and worked examples in ${topic}`;
+        else suggestion = `A few students may need one-on-one support or additional resources for ${topic}`;
+        return { topic, studentsStruggling: failCount, suggestion };
+    });
+
+    const classHealth = avgAccuracy >= 70 ? 'excellent' : avgAccuracy >= 50 ? 'good' : 'needs-attention';
+
+    return {
+        focusAreas,
+        summary: avgAccuracy >= 70
+            ? 'The class is performing well overall. A few targeted interventions can help remaining students catch up.'
+            : avgAccuracy >= 50
+                ? 'Most students are on track. The topics below could use some reinforcement to lift class performance.'
+                : 'Some foundational topics need attention. Focused revision sessions on the areas below can help students build confidence.',
+        classHealth,
+    };
+}

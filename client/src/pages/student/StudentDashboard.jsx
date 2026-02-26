@@ -17,6 +17,7 @@ const StudentDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [recommendations, setRecommendations] = useState(null);
     const [recsLoading, setRecsLoading] = useState(false);
+    const [recsError, setRecsError] = useState(null);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -35,11 +36,13 @@ const StudentDashboard = () => {
 
     const handleGetRecommendations = async () => {
         setRecsLoading(true);
+        setRecsError(null);
         try {
             const res = await api.get('/api/student/recommendations');
             setRecommendations(res.data);
         } catch (error) {
             console.error('Failed to get recommendations:', error);
+            setRecsError(error.response?.data?.message || 'Failed to generate recommendations. Please try again.');
         } finally {
             setRecsLoading(false);
         }
@@ -305,13 +308,27 @@ const StudentDashboard = () => {
                             <h3 className="text-lg font-bold text-text-primary">AI Study Plan</h3>
                         </div>
 
-                        {!recommendations && !recsLoading && (
+                        {!recommendations && !recsLoading && !recsError && (
                             <button
                                 onClick={handleGetRecommendations}
                                 className="w-full py-3 bg-primary hover:bg-primary-light text-text-inverse font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
                             >
                                 <Sparkles className="w-4 h-4" /> Get Personalized Recommendations
                             </button>
+                        )}
+
+                        {recsError && (
+                            <div className="space-y-3">
+                                <div className="p-3 rounded-lg bg-danger/5 border border-danger/20">
+                                    <p className="text-xs text-danger font-medium">{recsError}</p>
+                                </div>
+                                <button
+                                    onClick={handleGetRecommendations}
+                                    className="w-full py-2 text-sm text-primary font-medium hover:bg-primary/5 rounded-lg border border-primary/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Sparkles className="w-3 h-3" /> Try Again
+                                </button>
+                            </div>
                         )}
 
                         {recsLoading && (
@@ -328,7 +345,7 @@ const StudentDashboard = () => {
                                         <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Priority Topics</h4>
                                         <div className="flex flex-wrap gap-2">
                                             {recommendations.priorityTopics.map((t, i) => (
-                                                <Badge key={i} color="danger" className="text-xs">{t}</Badge>
+                                                <Badge key={i} color="danger" className="text-xs">{typeof t === 'object' ? (t.topic || t.name || JSON.stringify(t)) : t}</Badge>
                                             ))}
                                         </div>
                                     </div>
@@ -341,7 +358,7 @@ const StudentDashboard = () => {
                                             {recommendations.studyPlan.map((step, i) => (
                                                 <li key={i} className="text-sm text-text-primary flex items-start gap-2">
                                                     <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                                                    {step}
+                                                    {typeof step === 'object' ? (step.action || step.step || JSON.stringify(step)) : step}
                                                 </li>
                                             ))}
                                         </ul>
@@ -355,7 +372,7 @@ const StudentDashboard = () => {
                                             {recommendations.youtubeSearchTerms.map((term, i) => (
                                                 <div key={i} className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:text-primary-light transition-colors" onClick={() => navigate('/student/youtube')}>
                                                     <Search className="w-3 h-3" />
-                                                    <span className="underline underline-offset-2">{term}</span>
+                                                    <span className="underline underline-offset-2">{typeof term === 'object' ? (term.query || term.term || JSON.stringify(term)) : term}</span>
                                                 </div>
                                             ))}
                                         </div>

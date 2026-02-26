@@ -7,6 +7,7 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import QuizAttempt from './pages/student/QuizAttempt';
+import QuizReview from './pages/student/QuizReview';
 import YoutubeAI from './pages/student/YoutubeAI';
 import AIDoubtSolver from './pages/student/AIDoubtSolver';
 import SmartRevision from './pages/student/SmartRevision';
@@ -39,6 +40,14 @@ function App() {
               element={(
                 <ProtectedRoute allowedRoles={['STUDENT']}>
                   <QuizAttempt />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/student/quiz/:id/review"
+              element={(
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <QuizReview />
                 </ProtectedRoute>
               )}
             />

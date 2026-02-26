@@ -109,40 +109,83 @@ Open **http://localhost:5173** in your browser.
 
 ## 🌐 Deployment
 
-### Frontend → Vercel
+### 🚀 Quick Deploy to Render (Recommended)
+
+This project includes a `render.yaml` blueprint for **one-click deployment** of both frontend and backend:
+
+1. **Push your code to GitHub** (if not already done)
+2. Go to [Render Dashboard](https://dashboard.render.com/)
+3. Click **"New +" → "Blueprint"**
+4. Connect your GitHub repository
+5. Render will detect `render.yaml` and set up both services automatically
+6. **Configure environment variables**:
+   - Backend: `MONGO_URI`, `GROQ_API_KEY`, `ALLOWED_ORIGINS`
+   - Frontend: `VITE_API_URL`
+7. Click **"Apply"** — both services will deploy! 🎉
+
+**See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed step-by-step instructions.**
+
+---
+
+### Manual Deployment Options
+
+<details>
+<summary><strong>Frontend → Render Static Site</strong></summary>
+
+1. Go to [render.com](https://render.com) and create a new **Static Site**
+2. Connect the GitHub repo
+3. Set **Root Directory** to `client`
+4. **Build Command:** `npm install && npm run build`
+5. **Publish Directory:** `dist`
+6. Add environment variable:
+   - `VITE_API_URL` = your deployed backend URL (e.g. `https://edusync-backend.onrender.com`)
+7. Deploy!
+
+</details>
+
+<details>
+<summary><strong>Frontend → Vercel</strong></summary>
 
 1. Go to [vercel.com](https://vercel.com) and import the GitHub repo
 2. Set **Root Directory** to `client`
 3. Vercel auto-detects Vite — build command: `npm run build`, output: `dist`
 4. Add environment variable:
-   - `VITE_API_URL` = your deployed backend URL (e.g. `https://edusync-api.onrender.com`)
+   - `VITE_API_URL` = your deployed backend URL (e.g. `https://edusync-backend.onrender.com`)
 5. Deploy!
 
-### Backend → Render (Recommended, Free Tier)
+</details>
+
+<details>
+<summary><strong>Backend → Render Web Service</strong></summary>
 
 1. Go to [render.com](https://render.com) and create a new **Web Service**
 2. Connect the GitHub repo
 3. Set **Root Directory** to `server`
 4. **Build Command:** `npm install`
-5. **Start Command:** `node server.js`
-6. Add environment variables:
+5. **Start Command:** `npm start`
+6. Add environment variables (see `server/.env.example`):
    - `MONGO_URI` = your MongoDB Atlas connection string
-   - `JWT_SECRET` = strong random string
+   - `JWT_SECRET` = strong random string (generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
    - `GROQ_API_KEY` = your Groq API key
    - `NODE_ENV` = `production`
-   - `ALLOWED_ORIGINS` = your Vercel frontend URL (e.g. `https://edusync.vercel.app`)
+   - `ALLOWED_ORIGINS` = your frontend URL (e.g. `https://edusync-frontend.onrender.com`)
+   - `STRICT_EXAM_MODE` = `true` (for zero-tolerance exam security)
 7. Deploy!
 
-> **Alternative:** The repo includes a `render.yaml` blueprint — click "New Blueprint Instance" on Render and point it to this repo.
+</details>
 
-### Backend → Railway (Alternative)
+<details>
+<summary><strong>Backend → Railway</strong></summary>
 
 1. Go to [railway.app](https://railway.app) and create a new project from GitHub
 2. Set **Root Directory** to `server`
-3. Add the same environment variables as above
+3. Add the same environment variables as Render
 4. Railway auto-detects Node.js and deploys
 
-### Backend → Docker (Self-hosted)
+</details>
+
+<details>
+<summary><strong>Backend → Docker (Self-hosted)</strong></summary>
 
 ```bash
 cd server
@@ -150,11 +193,40 @@ docker build -t edusync-api .
 docker run -p 5000:5000 --env-file .env edusync-api
 ```
 
-### Database → MongoDB Atlas
+</details>
+
+<details>
+<summary><strong>Database → MongoDB Atlas (Free Tier)</strong></summary>
 
 1. Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas)
-2. Create a database user and whitelist `0.0.0.0/0` for Render/Railway access
-3. Copy the connection string and set it as `MONGO_URI`
+2. Create a database user with password
+3. Whitelist **all IPs** (`0.0.0.0/0`) for Render/Railway access
+4. Copy the connection string:
+   ```
+   mongodb+srv://username:password@cluster.mongodb.net/edusync-ai?retryWrites=true&w=majority
+   ```
+5. Set it as `MONGO_URI` in your deployment environment variables
+
+</details>
+
+---
+
+### Environment Variables Reference
+
+**Backend Required**:
+- `MONGO_URI` — MongoDB connection string (Atlas recommended)
+- `JWT_SECRET` — Secret key for JWT tokens (32+ random characters)
+- `GROQ_API_KEY` — Get from [console.groq.com/keys](https://console.groq.com/keys)
+- `ALLOWED_ORIGINS` — Frontend URL for CORS (e.g., `https://edusync-frontend.onrender.com`)
+
+**Backend Optional**:
+- `PORT` — Server port (default: 5000, Render sets this automatically)
+- `NODE_ENV` — Environment mode (development/production)
+- `ENABLE_ML` — Enable ML risk prediction (default: true)
+- `STRICT_EXAM_MODE` — Exam security mode (true = single violation terminates quiz, false = 3-violation threshold)
+
+**Frontend Required**:
+- `VITE_API_URL` — Backend API URL (e.g., `https://edusync-backend.onrender.com`)
 
 ---
 
@@ -215,6 +287,7 @@ EduSync/
 All features are fully functional:
 - ✅ Role-based auth (Student, Teacher, Admin)
 - ✅ AI Quiz Generator (Groq LLM, topic or PDF-based)
+- ✅ **Ultra Strict Exam Lockdown Mode** — Zero-tolerance exam security (single violation = immediate termination)
 - ✅ Risk Prediction Engine & Weakness Detection
 - ✅ YouTube AI Summarizer (yt-dlp + Groq)
 - ✅ AI Doubt Solver
@@ -222,7 +295,8 @@ All features are fully functional:
 - ✅ Teacher Command Center with analytics
 - ✅ Admin Panel with academic structure management
 - ✅ File uploads stored in MongoDB (not filesystem)
-- ✅ Production-ready with Vercel + Render deployment configs
+- ✅ Production-ready with Render deployment configs (render.yaml)
+- ✅ Comprehensive test coverage (Jest)
 
 ---
 

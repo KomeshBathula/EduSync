@@ -177,11 +177,17 @@ export const getAdaptiveRecommendations = async (userId) => {
     };
   }
 
-  // Normalize
+  // Normalize — flatten objects to strings so the frontend can render them safely
   return {
-    priorityTopics: Array.isArray(parsed.priorityTopics) ? parsed.priorityTopics : [],
-    studyPlan: Array.isArray(parsed.studyPlan) ? parsed.studyPlan : [],
-    youtubeSearchTerms: Array.isArray(parsed.youtubeSearchTerms) ? parsed.youtubeSearchTerms : [],
+    priorityTopics: Array.isArray(parsed.priorityTopics)
+      ? parsed.priorityTopics.map(t => (typeof t === 'object' && t !== null ? (t.topic || t.name || JSON.stringify(t)) : String(t)))
+      : [],
+    studyPlan: Array.isArray(parsed.studyPlan)
+      ? parsed.studyPlan.map(s => (typeof s === 'object' && s !== null ? (s.action || s.step || JSON.stringify(s)) : String(s)))
+      : [],
+    youtubeSearchTerms: Array.isArray(parsed.youtubeSearchTerms)
+      ? parsed.youtubeSearchTerms.map(t => (typeof t === 'object' && t !== null ? (t.query || t.term || JSON.stringify(t)) : String(t)))
+      : [],
     motivationalNote: parsed.motivationalNote || FALLBACK_RESPONSE.motivationalNote,
     metadata: {
       riskLevel: profile.riskLevel,

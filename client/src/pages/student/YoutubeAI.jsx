@@ -58,6 +58,11 @@ const YoutubeAI = () => {
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
+  
+  // Quiz config state
+  const [showQuizConfig, setShowQuizConfig] = useState(false);
+  const [quizQuestionCount, setQuizQuestionCount] = useState(5);
+  const [quizDifficulty, setQuizDifficulty] = useState('MEDIUM');
 
   const handleProcess = async (e) => {
     e.preventDefault();
@@ -80,20 +85,52 @@ const YoutubeAI = () => {
   };
 
   const handleGenerateQuiz = async () => {
-    if (!result) return;
+    if (!result) {
+      setError('No summary available. Please summarize a video first.');
+      return;
+    }
+    
+    // Validate summary exists and has content
+    if (!result.summary || result.summary.trim().length === 0) {
+      setError('Summary is empty. Please try summarizing the video again.');
+      return;
+    }
+
+    if (result.summary.trim().length < 50) {
+      setError('Summary is too short to generate a meaningful quiz. Try a longer video or use detailed notes.');
+      return;
+    }
+
     setQuizLoading(true);
     setQuizData(null);
     setQuizAnswers({});
     setQuizSubmitted(false);
+    setError(''); // Clear any previous errors
+    
     try {
       const res = await api.post('/api/ai/youtube-quiz', {
-        summary: result.summary,
-        keyConcepts: result.keyConcepts,
-        title: result.title,
+        summaryContent: result.summary,
+        questionCount: quizQuestionCount,
+        difficulty: quizDifficulty,
       });
+      
+      if (res.data?.error) {
+        setError(res.data.error);
+        return;
+      }
+      
+      if (!res.data?.questions || res.data.questions.length === 0) {
+        setError('Quiz generation failed. No questions were generated. Please try again.');
+        return;
+      }
+      
       setQuizData(res.data);
+      setShowQuizConfig(false);
     } catch (err) {
-      setError(err?.response?.data?.error || 'Failed to generate quiz.');
+      const errorMsg = err?.response?.data?.error || err?.response?.data?.message || 'Failed to generate quiz. Please try again.';
+      const debugInfo = err?.response?.data?.debug;
+      setError(debugInfo ? `${errorMsg} (Debug: ${JSON.stringify(debugInfo)})` : errorMsg);
+      console.error('Quiz generation error:', err?.response?.data || err);
     } finally {
       setQuizLoading(false);
     }
@@ -336,19 +373,92 @@ const YoutubeAI = () => {
           <Card className="border border-warning/20 bg-warning/5">
             <div className="p-5">
               {!quizData && !quizLoading && (
-                <div className="flex items-center justify-between">
+                <div className="space-y-4">
                   <div>
                     <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                       <Brain className="w-5 h-5 text-warning" /> Test Your Understanding
                     </h3>
-                    <p className="text-sm text-text-secondary mt-1">Take a quick quiz based on this video to reinforce your learning.</p>
+                    <p className="text-sm text-text-secondary mt-1">Customize and take a quiz based on this video to reinforce your learning.</p>
                   </div>
-                  <button
-                    onClick={handleGenerateQuiz}
-                    className="px-5 py-2.5 bg-warning hover:bg-warning/80 text-white font-bold rounded-xl transition-all flex items-center gap-2 text-sm"
-                  >
-                    <Brain className="w-4 h-4" /> Generate Quiz
-                  </button>
+                  
+                  {/* Warning if summary is too short */}
+                  {result?.summary && result.summary.trim().length < 50 && (
+                    <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                      <p className="text-xs text-text-secondary">
+                        The summary is too short to generate a meaningful quiz. Try using a longer video or select "Detailed" note size.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {!showQuizConfig ? (
+                    <button
+                      onClick={() => setShowQuizConfig(true)}
+                      disabled={!result?.summary || result.summary.trim().length < 50}
+                      className={`px-5 py-2.5 font-bold rounded-xl transition-all flex items-center gap-2 text-sm ${
+                        result?.summary && result.summary.trim().length >= 50
+                          ? 'bg-warning hover:bg-warning/80 text-white cursor-pointer'
+                          : 'bg-surface-alt text-text-secondary cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <Brain className="w-4 h-4" /> Generate Quiz
+                    </button>
+                  ) : (
+                    <div className="bg-surface rounded-xl border border-warning/20 p-5 space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-3">Number of Questions:</label>
+                        <div className="flex gap-3">
+                          {[5, 10, 15].map(count => (
+                            <button
+                              key={count}
+                              onClick={() => setQuizQuestionCount(count)}
+                              className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-sm transition-all ${
+                                quizQuestionCount === count
+                                  ? 'bg-warning text-white border-warning'
+                                  : 'bg-surface-alt text-text-secondary border border-border-base hover:border-warning/50'
+                              }`}
+                            >
+                              {count} Qs
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-3">Difficulty Level:</label>
+                        <div className="flex gap-3">
+                          {['EASY', 'MEDIUM', 'HARD'].map(level => (
+                            <button
+                              key={level}
+                              onClick={() => setQuizDifficulty(level)}
+                              className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-sm transition-all ${
+                                quizDifficulty === level
+                                  ? 'bg-warning text-white border-warning'
+                                  : 'bg-surface-alt text-text-secondary border border-border-base hover:border-warning/50'
+                              }`}
+                            >
+                              {level}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          onClick={handleGenerateQuiz}
+                          className="flex-1 px-5 py-2.5 bg-warning hover:bg-warning/80 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                        >
+                          <Brain className="w-4 h-4" /> Generate Quiz
+                        </button>
+                        <button
+                          onClick={() => setShowQuizConfig(false)}
+                          className="flex-1 px-5 py-2.5 bg-surface-alt hover:bg-surface-alt/80 text-text-secondary font-bold rounded-xl transition-all text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

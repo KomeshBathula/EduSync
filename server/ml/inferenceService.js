@@ -36,6 +36,7 @@ export const modelExists = async () => {
 
 /**
  * Load the trained model into memory (cached singleton).
+ * Uses custom IOHandler for pure @tensorflow/tfjs compatibility.
  * @returns {Promise<tf.LayersModel|null>}
  */
 export const loadModel = async () => {
@@ -49,8 +50,19 @@ export const loadModel = async () => {
 
   try {
     const startTime = Date.now();
-    const modelPath = `file://${MODEL_DIR}/model.json`;
-    cachedModel = await tf.loadLayersModel(modelPath);
+
+    // Read model topology and weights manually (pure tfjs compatible)
+    const modelJSONRaw = await fs.readFile(path.join(MODEL_DIR, 'model.json'), 'utf-8');
+    const modelJSON = JSON.parse(modelJSONRaw);
+    const weightsPath = path.join(MODEL_DIR, 'weights.bin');
+    const weightData = await fs.readFile(weightsPath);
+
+    cachedModel = await tf.loadLayersModel(tf.io.fromMemory({
+      modelTopology: modelJSON.modelTopology,
+      weightSpecs: modelJSON.weightsManifest?.[0]?.weights || [],
+      weightData: weightData.buffer.slice(weightData.byteOffset, weightData.byteOffset + weightData.byteLength),
+    }));
+
     modelLoadTimeMs = Date.now() - startTime;
 
     // Load metadata

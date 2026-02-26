@@ -34,10 +34,10 @@ const TeacherDashboard = () => {
     const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
     const [quizForm, setQuizForm] = useState({
         targetAudienceId: '',
+        title: '',
         topic: '',
         difficulty: 'MEDIUM',
         numQuestions: 5,
-        contextText: '',
         document: null
     });
     const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
@@ -49,6 +49,10 @@ const TeacherDashboard = () => {
     const [integritySummary, setIntegritySummary] = useState([]);
     const [integrityLoading, setIntegrityLoading] = useState(false);
     const [integrityFilter, setIntegrityFilter] = useState('all'); // all | flagged | auto-submitted
+    
+    // Quizzes for Integrity Monitor dropdown
+    const [sectionQuizzes, setSectionQuizzes] = useState([]);
+    const [sectionQuizzesLoading, setSectionQuizzesLoading] = useState(false);
 
     useEffect(() => {
         // Fetch public academic structures
@@ -104,6 +108,30 @@ const TeacherDashboard = () => {
                 }
             })
             .catch((err) => console.error("Failed fetching analytics:", err));
+    }, [selectedContextId]);
+
+    // Fetch quizzes for Integrity Monitor dropdown when section changes
+    useEffect(() => {
+        if (!selectedContextId || selectedContextId === 'all') {
+            setSectionQuizzes([]);
+            setIntegrityQuizId('');
+            return;
+        }
+
+        setSectionQuizzesLoading(true);
+        api.get(`/api/quiz/section/${selectedContextId}`)
+            .then((res) => {
+                if (res.data?.success && Array.isArray(res.data.quizzes)) {
+                    setSectionQuizzes(res.data.quizzes);
+                } else {
+                    setSectionQuizzes([]);
+                }
+            })
+            .catch((err) => {
+                console.error("Failed fetching section quizzes:", err);
+                setSectionQuizzes([]);
+            })
+            .finally(() => setSectionQuizzesLoading(false));
     }, [selectedContextId]);
 
     const handleContextChange = (e) => {
@@ -204,15 +232,16 @@ const TeacherDashboard = () => {
     const handleQuizSubmit = async (e) => {
         e.preventDefault();
         if (!quizForm.targetAudienceId) return alert("Select a target class section.");
-        if (!quizForm.topic) return alert("Enter a topic name.");
+        if (!quizForm.title.trim()) return alert("Enter a quiz title.");
+        if (!quizForm.topic.trim() && !quizForm.document) return alert("Provide either a topic name or upload a PDF file.");
 
         setIsGeneratingQuiz(true);
         const formData = new FormData();
         formData.append('targetAudienceId', quizForm.targetAudienceId);
-        formData.append('topic', quizForm.topic);
+        formData.append('title', quizForm.title.trim());
+        formData.append('topic', quizForm.topic.trim());
         formData.append('difficulty', quizForm.difficulty);
         formData.append('numQuestions', quizForm.numQuestions);
-        formData.append('contextText', quizForm.contextText);
         if (quizForm.document) {
             formData.append('document', quizForm.document);
         }
@@ -221,7 +250,7 @@ const TeacherDashboard = () => {
             await api.post('/api/quiz/generate', formData);
             alert("AI Quiz Generated successfully!");
             setIsQuizModalOpen(false);
-            setQuizForm({ targetAudienceId: '', topic: '', difficulty: 'MEDIUM', numQuestions: 5, contextText: '', document: null });
+            setQuizForm({ targetAudienceId: '', title: '', topic: '', difficulty: 'MEDIUM', numQuestions: 5, document: null });
             // Refresh analytics to show the newly added quiz natively!
             if (selectedContextId) {
                 const refreshRes = await api.get(`/api/academic/${selectedContextId}/analytics`);
@@ -343,77 +372,127 @@ const TeacherDashboard = () => {
                     </div>
                 </Card>
 
-                {/* Right Column: High Risk Students + Recent Content */}
+                {/* Right Column: High Risk Students */}
                 <div className="space-y-6">
                     <Card className="p-6 h-auto">
                         <div className="flex items-center gap-2 mb-6">
                             <ShieldAlert className="w-5 h-5 text-danger" />
-                            <h3 className="text-lg font-heading font-bold text-text-primary">High Risk Students</h3>
+                            <h3 className="text-lg font-heading font-bold text-text-primary">Students Needing Support</h3>
                         </div>
                         {!analytics.highRiskStudents || analytics.highRiskStudents.length === 0 ? (
                             <div className="p-4 bg-surface-alt border border-border-subtle rounded-[var(--radius-sm)] flex items-center justify-center">
-                                <p className="text-sm text-success font-medium">No high-risk students detected.</p>
+                                <p className="text-sm text-success font-medium">All students are on track!</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {analytics.highRiskStudents.slice(0, 4).map((s, i) => (
-                                    <div key={i} className="flex items-center justify-between p-3 rounded-[var(--radius-md)] border border-border-base bg-surface hover:border-danger hover:shadow-level1 transition-all">
-                                        <span className="text-sm font-semibold text-text-primary">{s.name}</span>
+                                {analytics.highRiskStudents.slice(0, 5).map((s, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 rounded-[var(--radius-md)] border border-border-base bg-surface hover:border-danger/50 hover:shadow-level1 transition-all">
+                                        <div>
+                                            <span className="text-sm font-semibold text-text-primary block">{s.name}</span>
+                                            {s.failedTopic && s.failedTopic !== 'N/A' && (
+                                                <span className="text-xs text-text-secondary">Needs help with: <span className="text-warning font-medium">{s.failedTopic}</span></span>
+                                            )}
+                                        </div>
                                         <Badge color="danger">Risk: {s.riskVal}%</Badge>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </Card>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="p-6 h-auto flex flex-col">
-                            <h3 className="text-lg font-heading font-bold text-text-primary mb-4">Recent Quizzes</h3>
-                            <div className="flex-1 flex flex-col justify-start">
-                                {!analytics.recentQuizzes || analytics.recentQuizzes.length === 0 ? (
-                                    <p className="text-sm text-text-secondary bg-surface-alt p-3 rounded-[var(--radius-sm)] border border-border-subtle">No quizzes yet.</p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {analytics.recentQuizzes.slice(0, 3).map((q) => (
-                                            <div key={q._id} className="flex items-start justify-between bg-surface-alt border border-border-base rounded-[var(--radius-md)] p-3 group hover:border-border-hover transition-colors">
-                                                <div className="pr-2">
-                                                    <p className="text-sm text-text-primary font-semibold line-clamp-1">{q.topic}</p>
-                                                    <p className="text-xs text-text-secondary mt-1">{q.difficulty} • {q.questions?.length || 0} Qs</p>
-                                                </div>
-                                                <button onClick={() => handleDeleteQuiz(q._id)} className="text-text-muted hover:text-danger hover:bg-danger/10 p-1.5 rounded-md transition-colors shrink-0">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-
-                        <Card className="p-6 h-auto flex flex-col">
-                            <h3 className="text-lg font-heading font-bold text-text-primary mb-4">Recent Materials</h3>
-                            <div className="flex-1 flex flex-col justify-start">
-                                {!analytics.recentMaterials || analytics.recentMaterials.length === 0 ? (
-                                    <p className="text-sm text-text-secondary bg-surface-alt p-3 rounded-[var(--radius-sm)] border border-border-subtle">No materials uploaded.</p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {analytics.recentMaterials.slice(0, 3).map((m) => (
-                                            <div key={m._id} className="flex items-start justify-between bg-surface-alt border border-border-base rounded-[var(--radius-md)] p-3 group hover:border-border-hover transition-colors">
-                                                <div className="pr-2">
-                                                    <p className="text-sm text-text-primary font-semibold line-clamp-1">{m.title}</p>
-                                                    <p className="text-xs text-text-secondary mt-1">{new Date(m.createdAt).toLocaleDateString()}</p>
-                                                </div>
-                                                <button onClick={() => handleDeleteMaterial(m._id)} className="text-text-muted hover:text-danger hover:bg-danger/10 p-1.5 rounded-md transition-colors shrink-0">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-                    </div>
                 </div>
+            </div>
+
+            {/* Teaching Focus Areas + Recent Content — full width below the grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                {/* Teaching Focus Areas */}
+                {analytics.teachingInsights && (
+                    <Card className="p-6 lg:col-span-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <BrainCircuit className="w-5 h-5 text-primary" />
+                            <h3 className="text-lg font-heading font-bold text-text-primary">Teaching Focus Areas</h3>
+                        </div>
+                        <p className="text-xs text-text-secondary mb-5 leading-relaxed">{analytics.teachingInsights.summary}</p>
+
+                        <div className="space-y-4">
+                            {analytics.teachingInsights.focusAreas?.map((area, i) => (
+                                <div key={i} className="p-4 rounded-[var(--radius-md)] border border-border-base bg-surface-alt">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-bold text-text-primary">{area.topic}</span>
+                                        <Badge color={area.studentsStruggling >= 3 ? 'danger' : area.studentsStruggling >= 2 ? 'warning' : 'primary'} className="text-xs">
+                                            {area.studentsStruggling} {area.studentsStruggling === 1 ? 'student' : 'students'}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-xs text-text-secondary leading-relaxed">{area.suggestion}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {analytics.teachingInsights.classHealth && (
+                            <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${
+                                analytics.teachingInsights.classHealth === 'excellent' ? 'bg-success/5 border border-success/20' :
+                                analytics.teachingInsights.classHealth === 'good' ? 'bg-primary/5 border border-primary/20' :
+                                'bg-warning/5 border border-warning/20'
+                            }`}>
+                                <TrendingUp className={`w-4 h-4 ${
+                                    analytics.teachingInsights.classHealth === 'excellent' ? 'text-success' :
+                                    analytics.teachingInsights.classHealth === 'good' ? 'text-primary' : 'text-warning'
+                                }`} />
+                                <span className={`text-xs font-medium ${
+                                    analytics.teachingInsights.classHealth === 'excellent' ? 'text-success' :
+                                    analytics.teachingInsights.classHealth === 'good' ? 'text-primary' : 'text-warning'
+                                }`}>
+                                    Class Health: {analytics.teachingInsights.classHealth === 'excellent' ? 'Excellent' : analytics.teachingInsights.classHealth === 'good' ? 'Good' : 'Needs Attention'}
+                                </span>
+                            </div>
+                        )}
+                    </Card>
+                )}
+
+                <Card className="p-6 lg:col-span-1 flex flex-col">
+                    <h3 className="text-lg font-heading font-bold text-text-primary mb-4">Recent Quizzes</h3>
+                    <div className="flex-1 flex flex-col justify-start">
+                        {!analytics.recentQuizzes || analytics.recentQuizzes.length === 0 ? (
+                            <p className="text-sm text-text-secondary bg-surface-alt p-3 rounded-[var(--radius-sm)] border border-border-subtle">No quizzes yet.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {analytics.recentQuizzes.slice(0, 3).map((q) => (
+                                    <div key={q._id} className="flex items-start justify-between bg-surface-alt border border-border-base rounded-[var(--radius-md)] p-3 group hover:border-border-hover transition-colors">
+                                        <div className="pr-2">
+                                            <p className="text-sm text-text-primary font-semibold line-clamp-1">{q.topic}</p>
+                                            <p className="text-xs text-text-secondary mt-1">{q.difficulty} • {q.questions?.length || 0} Qs</p>
+                                        </div>
+                                        <button onClick={() => handleDeleteQuiz(q._id)} className="text-text-muted hover:text-danger hover:bg-danger/10 p-1.5 rounded-md transition-colors shrink-0">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </Card>
+
+                <Card className="p-6 lg:col-span-1 flex flex-col">
+                    <h3 className="text-lg font-heading font-bold text-text-primary mb-4">Recent Materials</h3>
+                    <div className="flex-1 flex flex-col justify-start">
+                        {!analytics.recentMaterials || analytics.recentMaterials.length === 0 ? (
+                            <p className="text-sm text-text-secondary bg-surface-alt p-3 rounded-[var(--radius-sm)] border border-border-subtle">No materials uploaded.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {analytics.recentMaterials.slice(0, 3).map((m) => (
+                                    <div key={m._id} className="flex items-start justify-between bg-surface-alt border border-border-base rounded-[var(--radius-md)] p-3 group hover:border-border-hover transition-colors">
+                                        <div className="pr-2">
+                                            <p className="text-sm text-text-primary font-semibold line-clamp-1">{m.title}</p>
+                                            <p className="text-xs text-text-secondary mt-1">{new Date(m.createdAt).toLocaleDateString()}</p>
+                                        </div>
+                                        <button onClick={() => handleDeleteMaterial(m._id)} className="text-text-muted hover:text-danger hover:bg-danger/10 p-1.5 rounded-md transition-colors shrink-0">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </Card>
             </div>
 
             {/* Comprehensive Student Analytics Table */}
@@ -528,13 +607,16 @@ const TeacherDashboard = () => {
                     <div className="flex items-center gap-3 flex-wrap">
                         <div className="relative">
                             <select
+                                disabled={selectedContextId === 'all' || sectionQuizzesLoading || sectionQuizzes.length === 0}
                                 value={integrityQuizId}
                                 onChange={e => handleIntegrityQuizChange(e.target.value)}
-                                className="appearance-none bg-surface-alt border border-border-base rounded-[var(--radius-md)] pl-3 pr-8 py-2 text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
+                                className="appearance-none bg-surface-alt border border-border-base rounded-[var(--radius-md)] pl-3 pr-8 py-2 text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <option value="">Select a Quiz</option>
-                                {(analytics.recentQuizzes || []).map(q => (
-                                    <option key={q._id} value={q._id}>{q.topic} ({q.difficulty})</option>
+                                <option value="">
+                                    {sectionQuizzesLoading ? 'Loading quizzes...' : sectionQuizzes.length === 0 ? 'No quizzes available' : 'Select a Quiz'}
+                                </option>
+                                {sectionQuizzes.map(q => (
+                                    <option key={q._id} value={q._id}>{q.title}</option>
                                 ))}
                             </select>
                             <ChevronDown className="w-4 h-4 text-text-muted absolute right-2 top-2.5 pointer-events-none" />
@@ -728,7 +810,18 @@ const TeacherDashboard = () => {
                             </div>
                             <form onSubmit={handleQuizSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Target Section</label>
+                                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Quiz Title <span className="text-danger">*</span></label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={quizForm.title}
+                                        onChange={e => setQuizForm({ ...quizForm, title: e.target.value })}
+                                        placeholder="e.g. Data Structures Mid-term Quiz"
+                                        className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Target Section <span className="text-danger">*</span></label>
                                     <div className="relative">
                                         <select
                                             required
@@ -748,17 +841,6 @@ const TeacherDashboard = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Topic Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={quizForm.topic}
-                                            onChange={e => setQuizForm({ ...quizForm, topic: e.target.value })}
-                                            placeholder="e.g. Heaps & Priorities"
-                                            className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                                        />
-                                    </div>
-                                    <div>
                                         <label className="block text-sm font-medium text-text-secondary mb-1.5">Difficulty</label>
                                         <div className="relative">
                                             <select
@@ -773,40 +855,64 @@ const TeacherDashboard = () => {
                                             <ChevronDown className="w-4 h-4 text-primary absolute right-4 top-3.5 pointer-events-none" />
                                         </div>
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Questions</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="30"
+                                            value={quizForm.numQuestions}
+                                            onChange={e => setQuizForm({ ...quizForm, numQuestions: e.target.value })}
+                                            className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Number of Questions</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="30"
-                                        value={quizForm.numQuestions}
-                                        onChange={e => setQuizForm({ ...quizForm, numQuestions: e.target.value })}
-                                        className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                                    />
+
+                                {/* Source Section — Topic OR PDF */}
+                                <div className="p-4 rounded-[var(--radius-md)] border border-border-base bg-surface-alt/50 space-y-4">
+                                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Quiz Source — provide at least one</p>
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Topic Name</label>
+                                        <input
+                                            type="text"
+                                            value={quizForm.topic}
+                                            onChange={e => setQuizForm({ ...quizForm, topic: e.target.value })}
+                                            placeholder="e.g. Heaps & Priority Queues"
+                                            className="w-full bg-surface border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 border-t border-border-subtle"></div>
+                                        <span className="text-xs text-text-muted font-medium">OR</span>
+                                        <div className="flex-1 border-t border-border-subtle"></div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Upload PDF</label>
+                                        <input
+                                            type="file"
+                                            accept=".pdf"
+                                            onChange={e => setQuizForm({ ...quizForm, document: e.target.files[0] || null })}
+                                            className="w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-[var(--radius-sm)] file:border-0 file:text-sm file:font-semibold file:bg-primary-light/10 file:text-primary hover:file:bg-primary-light/20 transition-all cursor-pointer"
+                                        />
+                                    </div>
+                                    {quizForm.document && quizForm.topic.trim() && (
+                                        <p className="text-xs text-warning font-medium flex items-center gap-1">
+                                            <AlertTriangle className="w-3 h-3" /> PDF uploaded — quiz will be generated from PDF content, not the topic.
+                                        </p>
+                                    )}
+                                    {!quizForm.document && !quizForm.topic.trim() && (
+                                        <p className="text-xs text-danger font-medium">Please enter a topic or upload a PDF to continue.</p>
+                                    )}
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Optional Source Context (Text)</label>
-                                    <textarea
-                                        rows="3"
-                                        value={quizForm.contextText}
-                                        onChange={e => setQuizForm({ ...quizForm, contextText: e.target.value })}
-                                        placeholder="Paste specific paragraphs, notes, or code to restrict the AIs knowledge base."
-                                        className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all custom-scrollbar resize-none"
-                                    ></textarea>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1.5">... OR Upload Source Material (PDF, DOC)</label>
-                                    <input
-                                        type="file"
-                                        accept=".pdf,.doc,.docx,.txt"
-                                        onChange={e => setQuizForm({ ...quizForm, document: e.target.files[0] })}
-                                        className="w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-[var(--radius-sm)] file:border-0 file:text-sm file:font-semibold file:bg-primary-light/10 file:text-primary hover:file:bg-primary-light/20 transition-all cursor-pointer"
-                                    />
-                                </div>
+
                                 <div className="pt-4 border-t border-border-subtle mt-2">
-                                    <Button disabled={isGeneratingQuiz} type="submit" variant="primary" className="w-full py-3 flex items-center justify-center gap-2">
-                                        <BrainCircuit className="w-5 h-5" /> {isGeneratingQuiz ? 'AI is processing...' : 'Generate Target Quiz'}
+                                    <Button
+                                        disabled={isGeneratingQuiz || (!quizForm.title.trim()) || (!quizForm.topic.trim() && !quizForm.document)}
+                                        type="submit"
+                                        variant="primary"
+                                        className="w-full py-3 flex items-center justify-center gap-2"
+                                    >
+                                        <BrainCircuit className="w-5 h-5" /> {isGeneratingQuiz ? 'AI is processing...' : 'Generate Quiz'}
                                     </Button>
                                 </div>
                             </form>

@@ -1,0 +1,7 @@
+{
+  "version": "v1",
+  "trainedAt": "2026-02-26T19:27:40.444Z",
+  "featureCount": 12,
+  "sampleCount": 123,
+  "syntheticAugmented": true
+}

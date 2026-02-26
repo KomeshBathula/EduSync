@@ -3,17 +3,29 @@ import mongoose from 'mongoose';
 const QuizSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true,
+        required: [true, 'Quiz title is required'],
+        trim: true,
+        minlength: [2, 'Title must be at least 2 characters'],
+        maxlength: [200, 'Title must not exceed 200 characters'],
+    },
+    topicName: {
+        type: String,
+        default: null,
+        trim: true,
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    sourceMode: {
+    sourceType: {
         type: String,
-        enum: ['TOPIC', 'NOTES'],
-        required: true,
+        enum: ['TOPIC', 'PDF'],
+        required: [true, 'Source type is required'],
+    },
+    sourceFileUrl: {
+        type: String,
+        default: null,
     },
     baseDifficulty: {
         type: String,
@@ -24,7 +36,8 @@ const QuizSchema = new mongoose.Schema({
         {
             questionText: String,
             options: [String],
-            correctOptionIndex: Number, // Use index to allow shuffling securely
+            correctOptionIndex: Number,
+            explanation: String, // Why the correct option is correct (2-4 sentences)
             topicTag: String,
             weight: { type: Number, default: 1 }
         }
@@ -39,5 +52,20 @@ const QuizSchema = new mongoose.Schema({
         default: 'PUBLISHED'
     }
 }, { timestamps: true });
+
+// Create indexes for faster queries
+QuizSchema.index({ targetAudience: 1, createdBy: 1, createdAt: -1 });
+QuizSchema.index({ targetAudience: 1 });
+
+// Schema-level validation
+QuizSchema.pre('validate', function (next) {
+    if (this.sourceType === 'TOPIC' && !this.topicName) {
+        this.invalidate('topicName', 'Topic name is required when sourceType is TOPIC');
+    }
+    if (this.sourceType === 'PDF' && !this.sourceFileUrl) {
+        this.invalidate('sourceFileUrl', 'Source file URL is required when sourceType is PDF');
+    }
+    next();
+});
 
 export default mongoose.model('Quiz', QuizSchema);

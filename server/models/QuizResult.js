@@ -21,7 +21,20 @@ const QuizResultSchema = new mongoose.Schema({
             isCorrect: Boolean,
             timeSpent: Number,
         }
-    ]
+    ],
+    submissionType: {
+        type: String,
+        enum: ['NORMAL', 'FORCED_SECURITY', 'FORCED_TIMEOUT'],
+        default: 'NORMAL',
+    },
+    violationType: {
+        type: String,
+        default: null,
+    },
+    sessionLocked: {
+        type: Boolean,
+        default: false,
+    },
 }, { timestamps: true });
 
 // Performance indexes
