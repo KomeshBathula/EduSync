@@ -109,54 +109,34 @@ Open **http://localhost:5173** in your browser.
 
 ## 🌐 Deployment
 
-### 🚀 Quick Deploy to Render (Recommended)
+### 🚀 Recommended: Vercel (Frontend) + Render (Backend)
 
-This project includes a `render.yaml` blueprint for **one-click deployment** of both frontend and backend:
+This is the **optimal deployment strategy** for EduSync:
 
-1. **Push your code to GitHub** (if not already done)
-2. Go to [Render Dashboard](https://dashboard.render.com/)
-3. Click **"New +" → "Blueprint"**
-4. Connect your GitHub repository
-5. Render will detect `render.yaml` and set up both services automatically
-6. **Configure environment variables**:
-   - Backend: `MONGO_URI`, `GROQ_API_KEY`, `ALLOWED_ORIGINS`
-   - Frontend: `VITE_API_URL`
-7. Click **"Apply"** — both services will deploy! 🎉
+**Quick Deploy**:
+1. **Backend (Render)**:
+   - Go to [Render Dashboard](https://dashboard.render.com/)
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repo → Select `main` branch
+   - Root Directory: `server`
+   - Build: `npm install` | Start: `npm start`
+   - Add environment variables (see guide below)
 
-**See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed step-by-step instructions.**
+2. **Frontend (Vercel)**:
+   - Go to [Vercel Dashboard](https://vercel.com/new)
+   - Import your GitHub repo
+   - Root Directory: `client`
+   - Framework: Vite (auto-detected)
+   - Add `VITE_API_URL` environment variable (your Render backend URL)
+
+**📖 See [DEPLOYMENT_VERCEL_RENDER.md](./DEPLOYMENT_VERCEL_RENDER.md) for complete step-by-step guide.**
 
 ---
 
 ### Manual Deployment Options
 
 <details>
-<summary><strong>Frontend → Render Static Site</strong></summary>
-
-1. Go to [render.com](https://render.com) and create a new **Static Site**
-2. Connect the GitHub repo
-3. Set **Root Directory** to `client`
-4. **Build Command:** `npm install && npm run build`
-5. **Publish Directory:** `dist`
-6. Add environment variable:
-   - `VITE_API_URL` = your deployed backend URL (e.g. `https://edusync-backend.onrender.com`)
-7. Deploy!
-
-</details>
-
-<details>
-<summary><strong>Frontend → Vercel</strong></summary>
-
-1. Go to [vercel.com](https://vercel.com) and import the GitHub repo
-2. Set **Root Directory** to `client`
-3. Vercel auto-detects Vite — build command: `npm run build`, output: `dist`
-4. Add environment variable:
-   - `VITE_API_URL` = your deployed backend URL (e.g. `https://edusync-backend.onrender.com`)
-5. Deploy!
-
-</details>
-
-<details>
-<summary><strong>Backend → Render Web Service</strong></summary>
+<summary><strong>Backend → Render (Manual Setup)</strong></summary>
 
 1. Go to [render.com](https://render.com) and create a new **Web Service**
 2. Connect the GitHub repo
@@ -168,14 +148,26 @@ This project includes a `render.yaml` blueprint for **one-click deployment** of 
    - `JWT_SECRET` = strong random string (generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
    - `GROQ_API_KEY` = your Groq API key
    - `NODE_ENV` = `production`
-   - `ALLOWED_ORIGINS` = your frontend URL (e.g. `https://edusync-frontend.onrender.com`)
+   - `ALLOWED_ORIGINS` = your Vercel frontend URL (e.g. `https://edusync.vercel.app`)
    - `STRICT_EXAM_MODE` = `true` (for zero-tolerance exam security)
 7. Deploy!
 
 </details>
 
 <details>
-<summary><strong>Backend → Railway</strong></summary>
+<summary><strong>Frontend → Vercel (Manual Setup)</strong></summary>
+
+1. Go to [vercel.com](https://vercel.com) and import the GitHub repo
+2. Set **Root Directory** to `client`
+3. Vercel auto-detects Vite — build command: `npm run build`, output: `dist`
+4. Add environment variable:
+   - `VITE_API_URL` = your deployed Render backend URL (e.g. `https://edusync-backend.onrender.com`)
+5. Deploy!
+
+</details>
+
+<details>
+<summary><strong>Alternative: Backend → Railway</strong></summary>
 
 1. Go to [railway.app](https://railway.app) and create a new project from GitHub
 2. Set **Root Directory** to `server`
