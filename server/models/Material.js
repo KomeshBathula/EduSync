@@ -9,8 +9,12 @@ const MaterialSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    fileUrl: {
-        type: String,
+    fileData: {
+        type: Buffer,
+        required: true,
+    },
+    fileSize: {
+        type: Number,
         required: true,
     },
     mimetype: {

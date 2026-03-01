@@ -1,0 +1,22 @@
+{
+  "name": "edusync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EduSync - AI-Powered Adaptive Learning Platform",
+  "scripts": {
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build:client": "cd client && npm run build",
+    "install:client": "cd client && npm install",
+    "install:server": "cd server && npm install",
+    "install:all": "npm run install:client && npm run install:server",
+    "start:server": "cd server && npm start",
+    "seed": "cd server && node seed.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RAMTEJA87/EduSync.git"
+  },
+  "keywords": ["edusync", "education", "ai", "mern", "groq"],
+  "license": "MIT"
+}

@@ -1,34 +1,37 @@
 import express from 'express';
 import multer from 'multer';
-import { generateQuiz, getQuizForStudent, submitQuiz, deleteQuiz } from '../controllers/quizController.js';
+import { generateQuiz, getQuizForStudent, submitQuiz, deleteQuiz, getQuizReview, forceSubmitQuiz } from '../controllers/quizController.js';
+import {
+  reportViolation,
+  getIntegrityEvents,
+  getIntegritySummary,
+  getIntegrityConfig,
+} from '../controllers/integrityController.js';
 import { protect, roleGuard } from '../middleware/authMiddleware.js';
-import fs from 'fs';
-import path from 'path';
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadPath = path.join(process.cwd(), 'uploads');
-        if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        cb(null, uploadPath);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname);
-    }
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 16 * 1024 * 1024 },
 });
-
-const upload = multer({ storage: storage });
 
 // Teacher only
 router.post('/generate', protect, roleGuard('TEACHER', 'ADMIN'), upload.single('document'), generateQuiz);
 router.delete('/:id', protect, roleGuard('TEACHER', 'ADMIN'), deleteQuiz);
 
-// Student only
+// Integrity config (all authenticated)
+router.get('/integrity/config', protect, getIntegrityConfig);
+
+// Student routes
 router.get('/:id/attempt', protect, roleGuard('STUDENT'), getQuizForStudent);
 router.post('/:id/submit', protect, roleGuard('STUDENT'), submitQuiz);
+router.post('/:id/force-submit', protect, roleGuard('STUDENT'), forceSubmitQuiz);
+router.get('/:id/review', protect, roleGuard('STUDENT'), getQuizReview);
+router.post('/:id/violation', protect, roleGuard('STUDENT'), reportViolation);
+
+// Teacher/Admin: integrity monitoring
+router.get('/:id/integrity', protect, roleGuard('TEACHER', 'ADMIN'), getIntegrityEvents);
+router.get('/:id/integrity/summary', protect, roleGuard('TEACHER', 'ADMIN'), getIntegritySummary);
 
 export default router;

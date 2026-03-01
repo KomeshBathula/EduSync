@@ -1,0 +1,129 @@
+PROJECT: EduSync AI — Intelligent Adaptive Learning Platform
+=============================================================
+
+WHAT IT IS:
+A full-stack web app for colleges. It uses AI (Groq LLM) to generate quizzes, detect student weaknesses, predict academic risk, and provide study recommendations. Three roles: Student, Teacher, Admin.
+
+TECH STACK:
+- Frontend: React 18 + Vite + TailwindCSS + Framer Motion + Recharts + Lucide Icons
+- Backend: Node.js + Express.js + Socket.IO
+- Database: MongoDB (Mongoose ODM)
+- Auth: JWT tokens + bcryptjs password hashing
+- AI: Groq API using llama-3.3-70b-versatile model
+- File uploads: Multer (stored in MongoDB as binary data)
+
+PROJECT STRUCTURE:
+  /client/src/pages/auth/Login.jsx          → Login page (role selector: STUDENT/TEACHER/ADMIN)
+  /client/src/pages/student/StudentDashboard.jsx → Student home
+  /client/src/pages/student/QuizAttempt.jsx → Timed MCQ quiz page
+  /client/src/pages/teacher/TeacherDashboard.jsx → Teacher command center
+  /client/src/pages/admin/AdminDashboard.jsx → Admin panel
+  /client/src/components/common/Card.jsx → Shared card component
+
+  /server/server.js             → Express app entry, Socket.IO setup
+  /server/config/db.js          → MongoDB connection
+  /server/models/User.js        → User schema (name, email, passwordHash, role, weakTopics, overallRiskLevel)
+  /server/models/Quiz.js        → Quiz schema (title, questions[], targetAudience, baseDifficulty)
+  /server/models/QuizResult.js  → Quiz result schema (studentId, accuracyPercentage, marksAssigned, timeSpent)
+  /server/models/AcademicStructure.js → Year/Branch/Section schema
+  /server/controllers/authController.js → login + register
+  /server/controllers/quizController.js → generateQuiz, getQuizForStudent, submitQuiz, deleteQuiz
+  /server/routes/authRoutes.js  → POST /api/auth/login, POST /api/auth/register
+  /server/routes/quizRoutes.js  → POST /api/quiz/generate (Teacher), GET/POST /api/quiz/:id/attempt|submit (Student)
+  /server/middleware/authMiddleware.js → JWT protect + roleGuard
+  /server/services/ai/groqQuizService.js        → Groq LLM call to generate MCQs
+  /server/services/ai/weakAreaDetector.js       → Updates User.weakTopics after quiz
+  /server/services/ai/predictionEngine.js       → Computes LOW/MEDIUM/HIGH risk from quiz history
+  /server/services/ai/assignmentEvaluator.js    → Converts score to marks
+  /server/services/ai/quizGeneratorService.js   → Orchestrator for quiz generation
+  /server/services/core/learningPathGenerator.js → Generates study paths
+  /server/services/core/resourceRecommendationService.js → Recommends resources
+
+ENV VARIABLES (/server/.env):
+  PORT=5000
+  MONGO_URI=mongodb://127.0.0.1:27017/edusync-ai
+  JWT_SECRET=supersecretedusynctoken
+  GROQ_API_KEY=<needed from console.groq.com>
+
+HOW EACH ROLE WORKS:
+---------------------
+
+ADMIN:
+- Two-tab dashboard: "Academic Hierarchy" and "User Directory"
+- Academic Hierarchy: CRUD for Year/Branch/Section nodes (e.g. Year 2 / CSE / Section A)
+- User Directory: Create/edit/delete Students and Teachers; assign students to a section
+- API calls: /api/admin/academic, /api/admin/users, /api/admin/users/bulk-import
+
+TEACHER:
+- Dropdown to select a class section (Year/Branch/Section)
+- KPI cards: Total Students, Active Quizzes, High-Risk Count, Avg Accuracy
+- Radar chart showing class topic mastery
+- High-risk student panel (auto-flagged by AI)
+- "Generate AI Quiz" modal: teacher types a topic + difficulty + num questions OR uploads a PDF; backend sends to Groq to generate MCQs, saves to DB, publishes to the section
+- "Upload Notes" modal: teacher uploads PDF/image for a section; students in that section can view it
+- Lists of recent quizzes and class notes with delete options
+- Comprehensive student analytics table (roll no., accuracy, weakness, risk)
+- API calls: /api/academic/* and /api/materials/* (routes partially MISSING from backend)
+
+STUDENT:
+- Dashboard fetches from /api/student/dashboard (NOT YET BUILT)
+- Shows: welcome header, AI tool cards, area chart of quiz accuracy over time, available quizzes list, quiz history, risk meter, class materials
+- Risk Meter: circular gauge shows the student's risk score (%) and label LOW/MEDIUM/HIGH
+- AI tool cards link to: /student/youtube (YouTube AI), /student/doubt-solver, /student/smart-revision (NONE of these pages exist yet)
+- Clicking a quiz navigates to /student/quiz/:id
+
+QUIZ ATTEMPT FLOW:
+- GET /api/quiz/:id/attempt → returns shuffled questions, options shuffled, correct answer NOT sent to client
+- Timer = 2 mins per question, auto-submits on timeout
+- Student picks options, clicks Next; on last question clicks Submit
+- POST /api/quiz/:id/submit sends { answers: [{questionId, selectedOptionText, timeSpent}], timeTakenSeconds }
+- Backend scores answers, calls weakAreaDetector (updates weakTopics in User), calls predictionEngine (recalculates risk), calls evaluateAssignment (returns marks)
+- Result screen shows: accuracy %, marks, list of weak topics, YouTube search links for each weakness
+
+RISK PREDICTION ALGORITHM (predictionEngine.js):
+  baseRisk = 0
+  Fetch last 3 quiz results:
+    if avg accuracy < 50% → baseRisk += 40
+    if avg accuracy < 70% → baseRisk += 20
+  Engagement (mocked at 60%): if < 30% → baseRisk += 30
+  If student has >1 topic with failureCount >= 2 → baseRisk += 30
+  baseRisk >= 75 → HIGH
+  baseRisk >= 40 → MEDIUM
+  else → LOW
+
+LOGIN FLOW (CURRENT STATE):
+- The login page has email, password, and role selector (STUDENT/TEACHER/ADMIN)
+- Clicking "Access Portal" just navigates to /[role]/dashboard without calling the backend
+- The real /api/auth/login endpoint exists and works but is NOT connected to the frontend yet
+
+WHAT IS WORKING:
+- MongoDB connected, server running on :5000, Vite frontend on :5173
+- Auth API (register/login) fully working
+- Quiz generation (needs GROQ_API_KEY), quiz attempt, quiz submit fully working
+- Admin frontend UI fully built (backend routes missing)
+- Teacher frontend fully built (some backend routes missing)
+- Student frontend fully built (backend API missing)
+
+WHAT IS MISSING / NEXT PHASES:
+1. Backend route: GET /api/student/dashboard (aggregate quiz history, risk, available quizzes, materials)
+2. Backend routes: /api/academic/public, /api/academic/:id/analytics
+3. Backend routes: /api/admin/academic (CRUD), /api/admin/users (CRUD)
+4. Backend routes: /api/materials/upload, /api/materials/:id (DELETE)
+5. Wire up login form to actually call /api/auth/login and store JWT token
+6. Build /student/youtube page (YouTube video search + AI summarizer)
+7. Build /student/doubt-solver page (AI chatbot for subject questions)
+8. Build /student/smart-revision page (AI generates a revision plan from weak topics)
+9. Add GROQ_API_KEY to .env for quiz generation to work
+10. Real-time features via Socket.IO (leaderboard, live quiz updates)
+11. Student roll number auto-assignment
+12. PDF viewer for class notes inside the app
+
+CURRENT ADMIN CREDENTIALS:
+  Email: admin@edusync.com
+  Password: Admin@123
+  (created directly via API, login form bypasses auth currently)
+
+PORTS:
+  Frontend: http://localhost:5173
+  Backend API: http://localhost:5000
+  MongoDB: mongodb://127.0.0.1:27017/edusync-ai

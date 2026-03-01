@@ -1,13 +1,19 @@
 import Quiz from '../models/Quiz.js';
 import QuizResult from '../models/QuizResult.js';
+import IntegrityEvent from '../models/IntegrityEvent.js';
 import { generateQuizFromGroq } from '../services/ai/groqQuizService.js';
 import { updateStudentGraph } from '../services/ai/weakAreaDetector.js';
 import { evaluateRisk } from '../services/ai/predictionEngine.js';
 import { evaluateAssignment } from '../services/ai/assignmentEvaluator.js';
-import fs from 'fs';
+import { logActivity } from '../services/activityLogService.js';
+import { notifyStudentsInContext } from '../services/notificationService.js';
+import { cleanupExamSession, updateBehaviorProfile, checkSessionLocked } from '../services/integrityService.js';
+import examSessionManager from '../services/examSessionManager.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
+
+const MAX_QUESTIONS = 50;
 
 // @desc    Generate AI Quiz
 // @route   POST /api/quiz/generate
@@ -16,45 +22,68 @@ export const generateQuiz = async (req, res) => {
     try {
         const { topic, difficulty, numQuestions, contextText, targetAudienceId } = req.body;
 
+        const clampedNumQuestions = Math.min(Math.max(parseInt(numQuestions) || 5, 1), MAX_QUESTIONS);
         let combinedContext = contextText || '';
 
-        // If a file was uploaded, extract text from it
+        // If a file was uploaded, extract text from its in-memory buffer
         if (req.file) {
-            if (req.file.mimetype === 'application/pdf') {
-                const dataBuffer = fs.readFileSync(req.file.path);
-                const pdfData = await pdfParse(dataBuffer);
-                combinedContext += `\n\n[Extracted File Text]\n${pdfData.text}`;
-            } else {
-                // For direct text files or minimal extraction fallback
-                const stringData = fs.readFileSync(req.file.path, 'utf8');
-                combinedContext += `\n\n[Extracted File Text]\n${stringData}`;
+            try {
+                if (req.file.mimetype === 'application/pdf') {
+                    const pdfData = await pdfParse(req.file.buffer);
+                    combinedContext += `\n\n[Extracted File Text]\n${pdfData.text}`;
+                } else {
+                    const stringData = req.file.buffer.toString('utf8');
+                    combinedContext += `\n\n[Extracted File Text]\n${stringData}`;
+                }
+            } catch (extractError) {
+                console.error('File text extraction failed:', extractError.message);
             }
-            // Cleanup the temp uploaded file for quiz generation
-            fs.unlinkSync(req.file.path);
         }
 
         // Generate quiz using Groq
         const generatedQuestions = await generateQuizFromGroq({
             topic,
             difficulty: difficulty || 'MEDIUM',
-            numQuestions: parseInt(numQuestions) || 5,
+            numQuestions: clampedNumQuestions,
             contextText: combinedContext
         });
 
         const quiz = await Quiz.create({
             title: `${topic} Quiz (${difficulty || 'MEDIUM'})`,
             createdBy: req.user._id,
-            sourceMode: combinedContext ? 'NOTES' : 'TOPIC',
+            sourceType: req.file ? 'PDF' : 'TOPIC',
+            topicName: topic,
             baseDifficulty: difficulty || 'MEDIUM',
             questions: generatedQuestions,
             targetAudience: targetAudienceId,
             status: 'PUBLISHED'
         });
 
+        // Faculty activity tracking (fire-and-forget)
+        logActivity({
+            actorId: req.user._id,
+            actionType: 'QUIZ_CREATE',
+            referenceId: quiz._id,
+            referenceModel: 'Quiz',
+            academicContextId: targetAudienceId,
+            description: `Generated quiz: ${quiz.title} (${generatedQuestions.length} questions)`,
+        });
+
+        // Notify students in the target section
+        if (targetAudienceId) {
+            notifyStudentsInContext({
+                academicContextId: targetAudienceId,
+                title: 'New Quiz Available',
+                message: `A new quiz "${quiz.title}" has been assigned. Attempt it from your dashboard.`,
+                type: 'QUIZ',
+                referenceId: quiz._id,
+            });
+        }
+
         res.status(201).json(quiz);
     } catch (error) {
         console.error("Quiz Generation Error: ", error);
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 
@@ -66,13 +95,20 @@ export const getQuizForStudent = async (req, res) => {
         const quiz = await Quiz.findById(req.params.id);
         if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
 
-        // Fisher-Yates Shuffle for questions
-        const shuffledQuestions = [...quiz.questions].sort(() => Math.random() - 0.5);
+        // Fisher-Yates (Knuth) Shuffle for questions
+        const shuffledQuestions = [...quiz.questions];
+        for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+        }
 
         // Shuffle options and remap correctOptionIndex
         const sanitizedQuestions = shuffledQuestions.map(q => {
             const optionsWithIndex = q.options.map((opt, index) => ({ text: opt, originalIndex: index }));
-            optionsWithIndex.sort(() => Math.random() - 0.5); // Shuffle options
+            for (let i = optionsWithIndex.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [optionsWithIndex[i], optionsWithIndex[j]] = [optionsWithIndex[j], optionsWithIndex[i]];
+            }
 
             return {
                 _id: q._id,
@@ -89,7 +125,7 @@ export const getQuizForStudent = async (req, res) => {
             questions: sanitizedQuestions
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 
@@ -99,7 +135,25 @@ export const getQuizForStudent = async (req, res) => {
 export const submitQuiz = async (req, res) => {
     try {
         const { timeTakenSeconds, answers } = req.body; // answers: [{ questionId, selectedOptionText, timeSpent }]
+        const quizId = req.params.id;
+        const studentId = req.user._id;
+
+        // Check if quiz was already force-submitted
+        if (checkSessionLocked(quizId, studentId)) {
+            return res.status(409).json({
+                message: 'Quiz already force-submitted due to integrity violations.',
+                forced: true,
+            });
+        }
+
+        if (!Array.isArray(answers)) {
+            return res.status(400).json({ message: 'Answers must be an array' });
+        }
+
         const quiz = await Quiz.findById(req.params.id);
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
 
         let totalScore = 0;
         let maxScore = 0;
@@ -129,8 +183,10 @@ export const submitQuiz = async (req, res) => {
         const accuracyPercentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
         const marksAssigned = await evaluateAssignment(totalScore, maxScore);
 
-        // AI Service Updates asynchronously
-        updateStudentGraph(req.user._id, weakNodes);
+        // AI Service Updates asynchronously (with error handling)
+        updateStudentGraph(req.user._id, weakNodes).catch(err =>
+            console.error('weakAreaDetector failed:', err.message)
+        );
 
         const result = await QuizResult.create({
             studentId: req.user._id,
@@ -143,7 +199,15 @@ export const submitQuiz = async (req, res) => {
         });
 
         // Evaluate Risk after new attempt
-        evaluateRisk(req.user._id);
+        evaluateRisk(req.user._id).catch(err =>
+            console.error('predictionEngine failed:', err.message)
+        );
+
+        // Clean up exam session and update behavioral profile
+        cleanupExamSession(quizId, studentId);
+        updateBehaviorProfile(studentId, quizId).catch(err =>
+            console.error('behaviorProfile update failed:', err.message)
+        );
 
         res.status(201).json({
             message: 'Quiz evaluated successfully',
@@ -152,7 +216,7 @@ export const submitQuiz = async (req, res) => {
             weakNodesDetected: weakNodes
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 
@@ -171,8 +235,220 @@ export const deleteQuiz = async (req, res) => {
         await QuizResult.deleteMany({ quizId: quiz._id });
         await quiz.deleteOne();
 
+        // Faculty activity tracking
+        logActivity({
+            actorId: req.user._id,
+            actionType: 'QUIZ_DELETE',
+            referenceId: quizId,
+            referenceModel: 'Quiz',
+            description: `Deleted quiz: ${quiz.title}`,
+        });
+
         res.json({ message: 'Quiz deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
+
+// @desc    Get Quiz Review with explanations
+// @route   GET /api/quiz/:id/review
+// @access  Student
+export const getQuizReview = async (req, res) => {
+    try {
+        const quizId = req.params.id;
+        const studentId = req.user._id;
+
+        // Verify that the student has attempted this quiz
+        const quizResult = await QuizResult.findOne({
+            quizId,
+            studentId,
+        });
+
+        if (!quizResult) {
+            return res.status(403).json({
+                message: 'You must attempt this quiz before viewing the review.'
+            });
+        }
+
+        // Fetch the quiz with all questions
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
+
+        // Build review structure with student answers
+        const reviewQuestions = quiz.questions.map((q, idx) => {
+            const metric = quizResult.questionMetrics.find(
+                m => m.questionId.toString() === q._id.toString()
+            );
+
+            return {
+                position: idx + 1,
+                questionText: q.questionText,
+                options: q.options,
+                correctOptionIndex: q.correctOptionIndex,
+                studentSelectedIndex: q.options.indexOf(
+                    // Find which option the student selected based on metrics
+                    metric ? q.options[q.correctOptionIndex] : null
+                ),
+                isCorrect: metric?.isCorrect || false,
+                explanation: q.explanation || 'No explanation available',
+                topicTag: q.topicTag,
+            };
+        });
+
+        res.json({
+            success: true,
+            quizId: quiz._id,
+            quizTitle: quiz.title,
+            score: quizResult.totalScore,
+            accuracy: Math.round(quizResult.accuracyPercentage),
+            timeTakenSeconds: quizResult.timeTakenSeconds,
+            attemptedAt: quizResult.createdAt,
+            questions: reviewQuestions,
+        });
+    } catch (error) {
+        console.error(JSON.stringify({
+            level: 'error',
+            service: 'quizController',
+            event: 'quiz_review_failed',
+            error: error.message,
+        }));
+        res.status(error.statusCode || 500).json({ message: error.message });
+    }
+};
+
+// @desc    Force-submit quiz due to security violation
+// @route   POST /api/quiz/:id/force-submit
+// @access  Student (protected)
+//
+// ULTRA STRICT LOCKDOWN MODE:
+// - Lock session immediately
+// - Calculate score from saved answers
+// - Mark as FORCED_SECURITY submission
+// - Log integrity event with termination reason
+// - Prevent duplicate submissions (409 Conflict)
+export const forceSubmitQuiz = async (req, res) => {
+    try {
+        const quizId = req.params.id;
+        const studentId = req.user._id;
+        const { violationType, answers } = req.body;
+
+        // Check if session is already locked (prevent duplicate submissions)
+        if (examSessionManager.isSessionLocked(quizId, studentId)) {
+            return res.status(409).json({
+                message: 'Quiz session already locked due to security violation.',
+                terminated: true,
+            });
+        }
+
+        // Lock session immediately
+        examSessionManager.lockSession(quizId, studentId);
+
+        // Fetch quiz
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
+
+        // Calculate score from saved answers (or zero if none)
+        let totalScore = 0;
+        let maxScore = 0;
+        let weakNodes = [];
+        const questionMetrics = [];
+
+        const answerMap = answers ? answers.reduce((acc, a) => {
+            acc[a.questionId] = a;
+            return acc;
+        }, {}) : {};
+
+        quiz.questions.forEach(q => {
+            maxScore += q.weight;
+            const ans = answerMap[q._id];
+            if (ans) {
+                const isCorrect = q.options[q.correctOptionIndex] === ans.selectedOptionText;
+                if (isCorrect) {
+                    totalScore += q.weight;
+                } else {
+                    weakNodes.push(q.topicTag);
+                }
+                questionMetrics.push({
+                    questionId: q._id,
+                    isCorrect,
+                    timeSpent: ans.timeSpent || 0,
+                });
+            }
+        });
+
+        const accuracyPercentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+        const marksAssigned = await evaluateAssignment(totalScore, maxScore);
+
+        // Create forced submission result
+        const result = await QuizResult.create({
+            studentId,
+            quizId,
+            totalScore,
+            timeTakenSeconds: 0,
+            accuracyPercentage,
+            marksAssigned,
+            questionMetrics,
+            submissionType: 'FORCED_SECURITY',
+            violationType: violationType || 'UNKNOWN',
+            sessionLocked: true,
+        });
+
+        // Log integrity event with termination reason
+        await IntegrityEvent.create({
+            studentId,
+            quizId,
+            eventType: 'MULTIPLE_VIOLATIONS',
+            metadata: { violationType, submissionType: 'FORCED_SECURITY' },
+            autoSubmitted: true,
+            terminationTriggered: true,
+            terminationReason: 'STRICT_MODE_VIOLATION',
+        });
+
+        // AI Services (async, best-effort)
+        updateStudentGraph(studentId, weakNodes).catch(err =>
+            console.error('weakAreaDetector failed in forced submit:', err.message)
+        );
+        evaluateRisk(studentId).catch(err =>
+            console.error('predictionEngine failed in forced submit:', err.message)
+        );
+        updateBehaviorProfile(studentId, quizId).catch(err =>
+            console.error('behaviorProfile update failed in forced submit:', err.message)
+        );
+
+        // Clean up session
+        examSessionManager.clearSession(quizId, studentId);
+
+        console.log(JSON.stringify({
+            level: 'warn',
+            service: 'quizController',
+            event: 'force_submit_executed',
+            quizId,
+            studentId,
+            violationType,
+            accuracy: Math.round(accuracyPercentage),
+        }));
+
+        res.status(201).json({
+            message: 'Quiz force-submitted due to security violation',
+            terminated: true,
+            terminationReason: 'Security violation detected',
+            marksAssigned,
+            accuracyPercentage: Math.round(accuracyPercentage),
+            submissionType: 'FORCED_SECURITY',
+            quizId,
+        });
+    } catch (error) {
+        console.error(JSON.stringify({
+            level: 'error',
+            service: 'quizController',
+            event: 'force_submit_failed',
+            error: error.message,
+        }));
+        res.status(error.statusCode || 500).json({ message: error.message });
+    }
+};
+

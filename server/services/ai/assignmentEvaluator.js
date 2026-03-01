@@ -1,4 +1,4 @@
-export const evaluateAssignment = async (score, maxScore) => {
+export const evaluateAssignment = (score, maxScore) => {
     if (maxScore === 0) return 0;
 
     const accuracy = (score / maxScore);

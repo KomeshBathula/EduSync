@@ -1,0 +1,31 @@
+services:
+  # Backend API Service (Deploy to Render)
+  # Frontend will be deployed separately to Vercel
+  - type: web
+    name: edusync-backend
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerfilePath: server/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ENABLE_ML
+        value: true
+      - key: MODEL_VERSION
+        value: v1
+      - key: ML_CONFIDENCE_THRESHOLD
+        value: 0.65
+      - key: STRICT_EXAM_MODE
+        value: true

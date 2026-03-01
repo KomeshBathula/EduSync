@@ -1,0 +1,109 @@
+/* client/src/styles/theme.css */
+:root {
+  /* Semantic Color System - Vibrant Light Theme */
+
+  /* Primary: Vibrant Indigo */
+  --color-primary-base: #4F46E5;
+  --color-primary-hover: #4338CA;
+  --color-primary-light: #818CF8;
+
+  /* Secondary: Bright Sky Blue */
+  --color-secondary-base: #0EA5E9;
+  --color-secondary-hover: #0284C7;
+  --color-secondary-light: #38BDF8;
+
+  /* Accent: Warm Amber */
+  --color-accent-base: #F59E0B;
+  --color-accent-hover: #D97706;
+  --color-accent-light: #FBBF24;
+
+  /* Status Colors: Popping and clear */
+  --color-success-base: #10B981;
+  --color-success-light: #34D399;
+
+  --color-warning-base: #F59E0B;
+  --color-warning-light: #FBBF24;
+
+  --color-danger-base: #EF4444;
+  --color-danger-light: #F87171;
+
+  /* Neutrals & Surfaces - Crisp Light Mode */
+  --color-bg-base: #FFFFFF;
+  /* Pure White */
+  --color-surface-base: #FFFFFF;
+  /* Pure White */
+  --color-surface-alt: #F8FAFC;
+  /* Slate 50 */
+  --color-surface-hover: #F1F5F9;
+  /* Slate 100 */
+  --color-border-subtle: #F1F5F9;
+  --color-border-base: #E2E8F0;
+  --color-focus-ring: rgba(79, 70, 229, 0.4);
+
+  /* Text Colors - High Contrast */
+  --color-text-primary: #0F172A;
+  /* Slate 900 */
+  --color-text-secondary: #475569;
+  /* Slate 600 */
+  --color-text-inverse: #FFFFFF;
+
+  /* Typography Base Values */
+  --font-family-headings: 'Sora', sans-serif;
+  --font-family-body: 'Inter', sans-serif;
+  --font-family-mono: 'IBM Plex Mono', monospace;
+
+  /* Realistic Non-Glass Shadows */
+  --shadow-level-1: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-level-2: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-level-3: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+  /* Border Radii - Friendly and modern */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+/* Dark Theme Overrides - Deep, Rich, Neon Accents */
+.dark {
+  /* Brighten primary hues for dark background contrast */
+  --color-primary-base: #6366F1;
+  --color-primary-hover: #4F46E5;
+  --color-primary-light: #818CF8;
+
+  --color-secondary-base: #38BDF8;
+  --color-secondary-light: #7DD3FC;
+
+  --color-accent-base: #FBBF24;
+  --color-accent-light: #FCD34D;
+
+  /* Status Colors */
+  --color-success-base: #34D399;
+  --color-warning-base: #FBBF24;
+  --color-danger-base: #F87171;
+
+  /* Very Deep Slate Backgrounds */
+  --color-bg-base: #020617;
+  /* Extremely dark slate */
+  --color-surface-base: #0F172A;
+  /* Dark Slate 900 */
+  --color-surface-alt: #1E293B;
+  /* Slate 800 */
+  --color-surface-hover: #334155;
+  /* Slate 700 */
+
+  --color-border-subtle: #1E293B;
+  --color-border-base: #334155;
+
+  /* Deepen shadows for dark mode */
+  --shadow-level-1: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-level-2: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-level-3: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+
+  /* Text Colors for Dark Mode */
+  --color-text-primary: #F8FAFC;
+  /* Slate 50 */
+  --color-text-secondary: #94A3B8;
+  /* Slate 400 */
+  --color-text-inverse: #020617;
+}
