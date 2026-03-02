@@ -88,7 +88,7 @@ VITE_API_URL=http://localhost:5000
 ### Seed Sample Data
 
 ```bash
-cd server && node seedData.js
+cd server && node seed.js
 ```
 
 This creates 100 students, 10 teachers, 5 quizzes, and ~200 quiz results. Default password: `Password@123`
@@ -129,7 +129,7 @@ This is the **optimal deployment strategy** for EduSync:
    - Framework: Vite (auto-detected)
    - Add `VITE_API_URL` environment variable (your Render backend URL)
 
-**📖 See [DEPLOYMENT_VERCEL_RENDER.md](./DEPLOYMENT_VERCEL_RENDER.md) for complete step-by-step guide.**
+**📖 See the deployment sections below for complete step-by-step guides.**
 
 ---
 
@@ -256,7 +256,7 @@ EduSync/
     ├── services/
     │   ├── ai/              # Groq quiz gen, risk engine, doubt solver, etc.
     │   └── core/            # Learning path & resource recommendation
-    └── utils/               # JWT helper, roll number generator
+    └── utils/               # JWT helper
 ```
 
 ---
