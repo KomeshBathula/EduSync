@@ -1,4 +1,6 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -7,6 +9,9 @@ import { Server } from 'socket.io';
 import connectDB from './config/db.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ─── Environment Validation ──────────────────────────────────────
 const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET', 'GROQ_API_KEY'];
@@ -26,14 +31,28 @@ const httpServer = createServer(app);
 // Trust proxy (required for Render, Railway, etc. behind reverse proxies)
 app.set('trust proxy', 1);
 
+// ─── CORS Configuration ─────────────────────────────────────────
+// Dynamic origin handling: allows localhost, 127.0.0.1, and local network IPs
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-    : ['http://localhost:5173', 'http://localhost:3000'];
+    : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+const corsOriginHandler = (origin, callback) => {
+    // Allow requests with no origin (server-to-server, curl, mobile apps)
+    if (!origin) return callback(null, true);
+    // Allow explicitly listed origins
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow any local/private network IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    if (/^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+};
 
 // Socket.io for Real-Time Analytics and Leaderboards
 export const io = new Server(httpServer, {
     cors: {
-        origin: allowedOrigins,
+        origin: corsOriginHandler,
         methods: ['GET', 'POST']
     }
 });
@@ -42,7 +61,7 @@ export const io = new Server(httpServer, {
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cors({
-    origin: allowedOrigins,
+    origin: corsOriginHandler,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
 }));
@@ -73,22 +92,33 @@ app.use('/api/activity', activityRoutes);
 app.use('/api/system', systemRoutes);
 
 // Health check endpoint (used by deployment platforms)
-app.get('/', (req, res) => {
-    res.json({
-        status: 'ok',
-        service: 'EduSync AI API',
-        timestamp: new Date().toISOString(),
-    });
-});
-
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// 404 handler for unmatched routes
-app.use((req, res) => {
-    res.status(404).json({ message: `Route ${req.originalUrl} not found` });
-});
+// ─── Production: Serve Frontend Static Files ────────────────────
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+
+    // SPA fallback: serve index.html for all non-API routes
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    });
+} else {
+    // Development: root info endpoint
+    app.get('/', (req, res) => {
+        res.json({
+            status: 'ok',
+            service: 'EduSync AI API',
+            timestamp: new Date().toISOString(),
+        });
+    });
+
+    // 404 handler for unmatched routes (dev only — in production the SPA fallback handles this)
+    app.use((req, res) => {
+        res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+    });
+}
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -124,9 +154,10 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-httpServer.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+httpServer.listen(PORT, HOST, () => {
+    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on http://${HOST}:${PORT}`);
 });
 
 // Graceful Shutdown
