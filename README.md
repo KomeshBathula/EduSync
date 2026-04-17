@@ -281,14 +281,17 @@ All features are fully functional:
 - ✅ AI Quiz Generator (Groq LLM, topic or PDF-based)
 - ✅ **Ultra Strict Exam Lockdown Mode** — Zero-tolerance exam security (single violation = immediate termination)
 - ✅ Risk Prediction Engine & Weakness Detection
-- ✅ YouTube AI Summarizer (yt-dlp + Groq)
-- ✅ AI Doubt Solver
-- ✅ Smart Revision Generator
 - ✅ Teacher Command Center with analytics
 - ✅ Admin Panel with academic structure management
 - ✅ File uploads stored in MongoDB (not filesystem)
 - ✅ Production-ready with Render deployment configs (render.yaml)
 - ✅ Comprehensive test coverage (Jest)
+
+### 🌟 Recent Stability & Security Updates
+- **Secure Course Materials Viewer**: Course materials are now fetched securely via authenticated API blob streams and rendered in an in-app modal, eliminating popup blocker issues and preventing JWT leakage in URLs.
+- **Robust Smart Revision Generator**: Implemented a highly resilient JSON parsing and validation layer with auto-repair and safe fallback arrays, guaranteeing the UI never crashes due to malformed AI output.
+- **YouTube AI Summarizer Upgrades**: Completely removed brittle system dependencies (`yt-dlp` and `python`). Transcripts are now fetched natively via Node.js, drastically improving cloud portability and stability.
+- **Doubt Solver Memory Management**: Added strict message history truncation limits to prevent conversation histories from exceeding MongoDB's 16MB document size limit.
 
 ---
 

@@ -5,8 +5,8 @@ import SectionHeader from '../../components/common/SectionHeader';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { motion } from 'framer-motion';
-import { BookOpen, AlertTriangle, TrendingUp, Cpu, LogOut, Video, MessageSquare, ArrowRight, FileText, Sparkles, Loader2, Search } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, AlertTriangle, TrendingUp, Cpu, LogOut, Video, MessageSquare, ArrowRight, FileText, Sparkles, Loader2, Search, X, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import NotificationBell from '../../components/common/NotificationBell';
@@ -18,6 +18,8 @@ const StudentDashboard = () => {
     const [recommendations, setRecommendations] = useState(null);
     const [recsLoading, setRecsLoading] = useState(false);
     const [recsError, setRecsError] = useState(null);
+    const [downloadingId, setDownloadingId] = useState(null);
+    const [viewingMaterial, setViewingMaterial] = useState(null);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -278,23 +280,39 @@ const StudentDashboard = () => {
                                 recommendedResources.map((res, i) => (
                                     <li
                                         key={i}
-                                        className="flex flex-col p-4 rounded-[var(--radius-md)] bg-surface border border-border-base hover:border-primary hover:shadow-level1 transition-all cursor-pointer group"
+                                        className={`flex flex-col p-4 rounded-[var(--radius-md)] bg-surface border border-border-base transition-all ${downloadingId === res.id ? 'opacity-70 pointer-events-none' : 'hover:border-primary hover:shadow-level1 cursor-pointer group'}`}
                                         onClick={async () => {
+                                            if (downloadingId) return;
                                             try {
+                                                setDownloadingId(res.id);
                                                 const response = await api.get(res.url, { responseType: 'blob' });
                                                 const file = new Blob([response.data], { type: response.headers['content-type'] });
                                                 const fileURL = URL.createObjectURL(file);
-                                                window.open(fileURL, '_blank');
-                                                setTimeout(() => URL.revokeObjectURL(fileURL), 60000);
+                                                
+                                                setViewingMaterial({
+                                                    url: fileURL,
+                                                    title: res.title,
+                                                    type: res.type || response.headers['content-type']
+                                                });
                                             } catch (error) {
                                                 console.error('Failed to load material', error);
-                                                // Global axios interceptor handles 401s automatically
+                                                if (error.response?.status === 401) {
+                                                    window.location.href = '/login';
+                                                } else {
+                                                    alert('Failed to open material. It may be unavailable.');
+                                                }
+                                            } finally {
+                                                setDownloadingId(null);
                                             }
                                         }}
                                     >
                                         <div className="flex items-start justify-between gap-4 mb-2">
                                             <h5 className="text-sm font-semibold text-text-primary leading-tight group-hover:text-primary transition-colors">{res.title}</h5>
-                                            <ArrowRight className="w-4 h-4 text-text-secondary group-hover:text-primary group-hover:translate-x-1 transition-transform" />
+                                            {downloadingId === res.id ? (
+                                                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                                            ) : (
+                                                <ArrowRight className="w-4 h-4 text-text-secondary group-hover:text-primary group-hover:translate-x-1 transition-transform" />
+                                            )}
                                         </div>
                                         <div className="flex items-center text-xs text-text-secondary gap-2">
                                             <span className="uppercase font-mono">{res.type}</span>
@@ -401,6 +419,69 @@ const StudentDashboard = () => {
                     </Card>
                 </div>
             </div>
+
+            {/* Document Viewer Modal */}
+            <AnimatePresence>
+                {viewingMaterial && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+                        onClick={() => {
+                            URL.revokeObjectURL(viewingMaterial.url);
+                            setViewingMaterial(null);
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full max-w-5xl h-[85vh] bg-surface rounded-2xl shadow-level3 border border-border-base flex flex-col overflow-hidden"
+                        >
+                            <div className="flex items-center justify-between p-4 border-b border-border-base bg-surface-alt">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="w-5 h-5 text-primary" />
+                                    <h3 className="font-bold text-text-primary truncate max-w-md">{viewingMaterial.title}</h3>
+                                    <Badge color="primary" className="ml-2 uppercase">{typeof viewingMaterial.type === 'string' ? viewingMaterial.type.split('/')[1] || viewingMaterial.type : 'FILE'}</Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            const a = document.createElement('a');
+                                            a.href = viewingMaterial.url;
+                                            a.download = viewingMaterial.title;
+                                            a.click();
+                                        }}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Download className="w-4 h-4" /> Download
+                                    </Button>
+                                    <button
+                                        onClick={() => {
+                                            URL.revokeObjectURL(viewingMaterial.url);
+                                            setViewingMaterial(null);
+                                        }}
+                                        className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-base transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 bg-surface-alt/50 relative">
+                                <iframe
+                                    src={viewingMaterial.url}
+                                    className="w-full h-full border-none"
+                                    title={viewingMaterial.title}
+                                />
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </PageContainer>
     );
 };
