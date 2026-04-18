@@ -149,51 +149,55 @@ Rules:
 export const buildSmartRevisionPrompt = ({ weakTopics = [], riskLevel = 'LOW', recentQuizScores = [], language = 'English' }) => {
   const lang = validateLanguage(language);
   const langDirective = lang !== 'English'
-    ? `\nGenerate the entire response in ${lang}. Maintain academic terminology accurately.`
+    ? `\nGenerate the entire response in ${lang}. Maintain academic terminology accurately. Ensure JSON keys remain in English.`
     : '';
 
-  const topicsStr = weakTopics.length > 0
-    ? weakTopics.map(t => `${t.topicName} (failed ${t.failureCount} times)`).join(', ')
+  // PERFORMANCE: Trim weak topics to avoid massive token bloat
+  const trimmedTopics = weakTopics.slice(0, 5);
+  const topicsStr = trimmedTopics.length > 0
+    ? trimmedTopics.map(t => `${t.topicName} (failed ${t.failureCount} times)`).join(', ')
     : 'General review needed';
-
-  const scoresStr = recentQuizScores.length > 0
-    ? recentQuizScores.map(s => `${s.accuracy}% accuracy`).join(', ')
-    : 'No recent quiz data';
 
   return {
     system: `${SYSTEM_PREAMBLE}
-You are an expert study planner that creates personalized 7-day revision strategies.
-Adapt the intensity based on the student's risk level and weak areas.${langDirective}`,
-    user: `Create a personalized 7-day revision plan for a student with the following profile:
+You are an academic planning assistant.
+
+Generate a STRICT 7-day revision plan.
+
+Respond ONLY in valid JSON.
+
+DO NOT include:
+- Markdown
+- Explanations outside JSON
+- Extra text${langDirective}`,
+    user: `Create a personalized 7-day revision plan for a student.
 
 Weak Topics: ${topicsStr}
 Risk Level: ${riskLevel}
-Recent Quiz Performance: ${scoresStr}
 
-Respond STRICTLY in this JSON format. No extra text outside JSON:
+JSON FORMAT:
+
 {
-  "overview": "A brief 2-3 sentence overview of the revision strategy",
+  "overview": "string",
   "days": [
     {
       "day": 1,
-      "focusTopics": ["Topic 1", "Topic 2"],
-      "subtopics": ["Subtopic detail 1", "Subtopic detail 2"],
-      "recommendedPractice": ["Practice activity 1", "Practice activity 2"],
-      "timeAllocation": "2 hours"
+      "focusTopics": ["string"],
+      "subtopics": ["string"],
+      "recommendedPractice": ["string"],
+      "timeAllocation": "string"
     }
   ],
-  "revisionStrategy": "Overall strategy tips and motivation (2-3 sentences)"
+  "revisionStrategy": "string"
 }
 
 Rules:
-- Generate exactly 7 days
-- Each day should have 1-3 focus topics
-- Prioritize weak topics with highest failure counts in early days
-- HIGH risk students get more intensive plans
-- LOW risk students get maintenance/reinforcement plans
-- Be specific with practice recommendations
-- Time allocations should be realistic (1-3 hours per day)
-- Do NOT hallucinate topic names — only use the weak topics provided`
+- Exactly 7 days
+- All fields must exist
+- Arrays must not be empty
+- No extra keys
+- No trailing commas
+- Output must be parseable JSON`
   };
 };
 

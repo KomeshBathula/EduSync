@@ -57,14 +57,15 @@ export const io = new Server(httpServer, {
     }
 });
 
-// Middleware
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+// Middleware — CORS must be first (before body parsers) so preflight OPTIONS are handled immediately
 app.use(cors({
     origin: corsOriginHandler,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
 }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // File downloads are served via /api/materials/download/:id route (stored in MongoDB)
 

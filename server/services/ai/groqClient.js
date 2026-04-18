@@ -152,17 +152,43 @@ export const chatCompletion = async ({
 export const safeParseJSON = (raw, fallback = null) => {
   try {
     if (!raw || typeof raw !== 'string') return fallback;
+    let cleaned = raw.trim();
     // Try to extract JSON if wrapped in markdown code blocks
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const cleaned = jsonMatch ? jsonMatch[1].trim() : raw.trim();
+    if (jsonMatch) {
+      cleaned = jsonMatch[1].trim();
+    } else {
+      // Fallback: extract substring from first { to last } or [ to ]
+      const startObj = cleaned.indexOf('{');
+      const endObj = cleaned.lastIndexOf('}');
+      const startArr = cleaned.indexOf('[');
+      const endArr = cleaned.lastIndexOf(']');
+      
+      let startIdx = -1;
+      let endIdx = -1;
+      
+      // Determine if object or array is the outermost structure
+      if (startObj !== -1 && (startArr === -1 || startObj < startArr)) {
+        startIdx = startObj;
+        endIdx = endObj;
+      } else if (startArr !== -1) {
+        startIdx = startArr;
+        endIdx = endArr;
+      }
+      
+      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        cleaned = cleaned.substring(startIdx, endIdx + 1);
+      }
+    }
     return JSON.parse(cleaned);
-  } catch {
+  } catch (error) {
     console.error(JSON.stringify({
       level: 'error',
       service: 'groqClient',
       event: 'json_parse_failed',
       rawLength: raw?.length || 0,
       rawPreview: raw?.slice(0, 200) || '',
+      error: error.message
     }));
     return fallback;
   }

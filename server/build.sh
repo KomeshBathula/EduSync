@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Install Python dependencies for YouTube functionality
-pip install yt-dlp==2025.1.15
+# No longer requires yt-dlp
 
 echo "✅ Build script completed"

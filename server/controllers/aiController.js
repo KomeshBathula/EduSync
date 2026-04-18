@@ -124,6 +124,8 @@ export const getSupportedLanguages = (req, res) => {
 
 // ─── Chat History & Memory Management ─────────────────────────────
 
+import AIChatMessage from '../models/AIChatMessage.js';
+
 // GET /api/ai/chat/history - Fetch conversation history
 export const getChatHistory = async (req, res) => {
   try {
@@ -133,19 +135,25 @@ export const getChatHistory = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const AIChatConversation = (await import('../models/AIChatConversation.js')).default;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
 
-    const conversation = await AIChatConversation.findOne({ studentId })
-      .select('messages')
+    const messages = await AIChatMessage.find({ studentId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
 
-    if (!conversation || !conversation.messages) {
-      return res.json({ success: true, messages: [] });
-    }
+    const totalMessages = await AIChatMessage.countDocuments({ studentId });
+    const hasMore = skip + messages.length < totalMessages;
 
-    // Return last 50 messages max
-    const messages = conversation.messages.slice(-50);
-    res.json({ success: true, messages });
+    res.json({ 
+      success: true, 
+      messages: messages.reverse(), // reverse so oldest in the page is first
+      hasMore,
+      totalMessages 
+    });
   } catch (error) {
     console.error('[Chat History Error]', error.message);
     res.status(500).json({ error: 'Failed to fetch chat history' });
@@ -174,21 +182,6 @@ export const sendChatMessage = async (req, res) => {
       return res.status(400).json({ error: 'Message cannot be empty' });
     }
 
-    const AIChatConversation = (await import('../models/AIChatConversation.js')).default;
-
-    // Get or create conversation
-    let conversation = await AIChatConversation.findOne({ studentId });
-    if (!conversation) {
-      conversation = new AIChatConversation({ studentId, messages: [] });
-    }
-
-    // Add user message
-    conversation.messages.push({
-      role: 'USER',
-      content: sanitizedMessage,
-      timestamp: new Date(),
-    });
-
     // Get AI response
     const aiResult = await solveDoubt({ message: sanitizedMessage, userId: studentId.toString() });
 
@@ -196,15 +189,25 @@ export const sendChatMessage = async (req, res) => {
       return res.status(500).json({ error: 'Failed to get AI response' });
     }
 
-    // Add AI message to conversation
-    conversation.messages.push({
-      role: 'AI',
-      content: aiResult.answer,
-      timestamp: new Date(),
-    });
+    // Save messages in parallel
+    await AIChatMessage.insertMany([
+      { studentId, role: 'USER', content: sanitizedMessage },
+      { studentId, role: 'AI', content: aiResult.answer }
+    ]);
 
-    // Save conversation
-    await conversation.save();
+    // Limit Storage: Keep last 5000 messages
+    const count = await AIChatMessage.countDocuments({ studentId });
+    if (count > 5000) {
+      const messagesToKeep = await AIChatMessage.find({ studentId })
+        .sort({ createdAt: -1 })
+        .limit(5000)
+        .select('_id');
+      const keepIds = messagesToKeep.map(m => m._id);
+      await AIChatMessage.deleteMany({
+        studentId,
+        _id: { $nin: keepIds }
+      });
+    }
 
     // ML tracking
     incrementUserMetric(studentId, 'aiDoubtUsageCount');
@@ -215,7 +218,7 @@ export const sendChatMessage = async (req, res) => {
       aiMessage: {
         role: 'AI',
         content: aiResult.answer,
-        timestamp: new Date(),
+        createdAt: new Date(),
       },
       metadata: {
         explanationSteps: aiResult.explanationSteps || [],
@@ -242,9 +245,7 @@ export const clearChatHistory = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const AIChatConversation = (await import('../models/AIChatConversation.js')).default;
-
-    await AIChatConversation.deleteOne({ studentId });
+    await AIChatMessage.deleteMany({ studentId });
 
     res.json({ success: true, message: 'Chat history cleared' });
   } catch (error) {

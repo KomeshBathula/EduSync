@@ -166,7 +166,7 @@ export const listUsers = async (role) => {
         .select('-passwordHash');
 };
 
-export const updateUserById = async (id, { name, email, role, academicContextId, rollNumber }) => {
+export const updateUserById = async (id, { name, email, role, academicContextId, rollNumber, password }) => {
     const user = await User.findById(id);
     if (!user) {
         const error = new Error('User not found');
@@ -193,6 +193,27 @@ export const updateUserById = async (id, { name, email, role, academicContextId,
     user.name = name || user.name;
     user.email = email || user.email;
     user.role = nextRole;
+
+    if (password && password.trim() !== '') {
+        if (password.trim().length < 6) {
+            const error = new Error('Password must be at least 6 characters');
+            error.statusCode = 400;
+            throw error;
+        }
+        const salt = await bcrypt.genSalt(10);
+        user.passwordHash = await bcrypt.hash(password.trim(), salt);
+        
+        // Log the password reset action (fire and forget)
+        import('./activityLogService.js').then(({ logActivity }) => {
+            logActivity({
+                actorId: id, // Typically would be the admin's ID, but using target ID as fallback in service layer
+                actionType: 'PASSWORD_RESET',
+                referenceId: user._id,
+                referenceModel: 'User',
+                description: `Password reset for user: ${user.email}`
+            }).catch(err => console.error('Failed to log password reset', err));
+        }).catch(() => {});
+    }
 
     if (rollNumber) {
         user.rollNumber = rollNumber;

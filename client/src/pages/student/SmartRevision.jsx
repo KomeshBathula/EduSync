@@ -114,11 +114,11 @@ const SmartRevision = () => {
       const res = await api.get(`/api/ai/smart-revision?language=${encodeURIComponent(language)}`);
       const data = res.data;
 
-      // Validate structured response
-      if (data && Array.isArray(data.days)) {
+      // Validate structured response safely before rendering
+      if (data && data.days && Array.isArray(data.days) && data.days.length > 0) {
         setPlan(data);
       } else {
-        setError('Received an invalid response format. Please try again.');
+        setError('Unable to generate revision plan. Please try again.');
       }
     } catch (err) {
       const msg = err?.response?.data?.error || err?.response?.data?.message || 'Failed to generate revision plan. Please try again.';

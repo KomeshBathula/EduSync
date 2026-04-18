@@ -9,9 +9,6 @@ import { logActivity } from '../services/activityLogService.js';
 import { notifyStudentsInContext } from '../services/notificationService.js';
 import { cleanupExamSession, updateBehaviorProfile, checkSessionLocked } from '../services/integrityService.js';
 import examSessionManager from '../services/examSessionManager.js';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
 
 const MAX_QUESTIONS = 50;
 
@@ -20,36 +17,34 @@ const MAX_QUESTIONS = 50;
 // @access  Teacher
 export const generateQuiz = async (req, res) => {
     try {
-        const { topic, difficulty, numQuestions, contextText, targetAudienceId } = req.body;
+        const { title, topic, difficulty, numQuestions, targetAudienceId } = req.body;
+
+        let finalTitle;
+        if (title && title.trim() !== "") {
+            finalTitle = title.trim();
+        } else if (topic && topic.trim() !== "") {
+            finalTitle = `${topic.trim()} Quiz (${difficulty || "MEDIUM"})`;
+        } else if (req.file) {
+            finalTitle = `Document-Based Quiz (${difficulty || "MEDIUM"})`;
+        } else {
+            return res.status(400).json({
+                message: "Either title, topic, or PDF must be provided",
+            });
+        }
 
         const clampedNumQuestions = Math.min(Math.max(parseInt(numQuestions) || 5, 1), MAX_QUESTIONS);
-        let combinedContext = contextText || '';
-
-        // If a file was uploaded, extract text from its in-memory buffer
-        if (req.file) {
-            try {
-                if (req.file.mimetype === 'application/pdf') {
-                    const pdfData = await pdfParse(req.file.buffer);
-                    combinedContext += `\n\n[Extracted File Text]\n${pdfData.text}`;
-                } else {
-                    const stringData = req.file.buffer.toString('utf8');
-                    combinedContext += `\n\n[Extracted File Text]\n${stringData}`;
-                }
-            } catch (extractError) {
-                console.error('File text extraction failed:', extractError.message);
-            }
-        }
 
         // Generate quiz using Groq
         const generatedQuestions = await generateQuizFromGroq({
-            topic,
+            sourceType: req.file ? 'PDF' : 'TOPIC',
+            topicName: topic,
+            pdfBuffer: req.file?.buffer || null,
             difficulty: difficulty || 'MEDIUM',
             numQuestions: clampedNumQuestions,
-            contextText: combinedContext
         });
 
         const quiz = await Quiz.create({
-            title: `${topic} Quiz (${difficulty || 'MEDIUM'})`,
+            title: finalTitle,
             createdBy: req.user._id,
             sourceType: req.file ? 'PDF' : 'TOPIC',
             topicName: topic,

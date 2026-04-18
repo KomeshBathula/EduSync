@@ -1,31 +1,10 @@
-import { execFile } from 'child_process';
-import { readFile, unlink } from 'fs/promises';
-import { tmpdir } from 'os';
-import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { chatCompletion, safeParseJSON, trimToTokenLimit, estimateTokens } from './groqClient.js';
 import { buildYoutubeSummaryPrompt } from './promptTemplates.js';
+import { getTranscript, extractVideoId } from './youtubeTranscriptService.js';
 
 // ─── Constants ────────────────────────────────────────────────────
 const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)[\w-]{11}/;
-const YT_DLP_TIMEOUT_MS = 30_000; // 30 seconds max for transcript fetch
-
-// ─── Extract Video ID ─────────────────────────────────────────────
-const extractVideoId = (url) => {
-  if (!url) return null;
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
-    /(?:youtu\.be\/)([\w-]{11})/,
-    /(?:youtube\.com\/embed\/)([\w-]{11})/,
-    /(?:youtube\.com\/v\/)([\w-]{11})/,
-    /(?:youtube\.com\/shorts\/)([\w-]{11})/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
-};
 
 // ─── Validate YouTube URL ─────────────────────────────────────────
 const validateYoutubeUrl = (url) => {
@@ -38,63 +17,19 @@ const validateYoutubeUrl = (url) => {
   if (!YOUTUBE_URL_REGEX.test(url)) {
     return { valid: false, error: 'Invalid YouTube URL format' };
   }
-  const videoId = extractVideoId(url);
-  if (!videoId) {
+  try {
+    const videoId = extractVideoId(url);
+    if (!videoId) {
+      return { valid: false, error: 'Could not extract video ID from URL' };
+    }
+    return { valid: true, videoId };
+  } catch (error) {
     return { valid: false, error: 'Could not extract video ID from URL' };
   }
-  return { valid: true, videoId };
 };
 
-// ─── Fetch Transcript via yt-dlp ──────────────────────────────────
-const fetchTranscriptWithYtDlp = (videoId) => {
-  return new Promise((resolve, reject) => {
-    const outTemplate = join(tmpdir(), `edusync_sub_${randomUUID()}`);
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const args = [
-      '--write-auto-sub',
-      '--skip-download',
-      '--sub-lang', 'en',
-      '--sub-format', 'json3',
-      '-o', outTemplate,
-      videoUrl,
-    ];
-
-    const child = execFile('yt-dlp', args, { timeout: YT_DLP_TIMEOUT_MS }, async (error, _stdout, stderr) => {
-      const subFile = `${outTemplate}.en.json3`;
-
-      if (error) {
-        // Clean up on error
-        try { await unlink(subFile); } catch {}
-        const msg = error.code === 'ENOENT'
-          ? 'yt-dlp is not installed. Please install it: pip3 install yt-dlp'
-          : stderr?.includes('Video unavailable')
-            ? 'Video not found or unavailable'
-            : stderr?.includes('no subtitles')
-              ? 'No captions available for this video'
-              : 'Failed to fetch video transcript';
-        return reject(Object.assign(new Error(msg), { statusCode: 422 }));
-      }
-
-      try {
-        const raw = await readFile(subFile, 'utf8');
-        const data = JSON.parse(raw);
-        const events = data.events?.filter(e => e.segs) || [];
-        const text = events
-          .map(e => e.segs.map(s => s.utf8 || '').join(''))
-          .join(' ')
-          .replace(/\n/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        // Clean up temp file
-        try { await unlink(subFile); } catch {}
-        resolve(text);
-      } catch (parseError) {
-        try { await unlink(subFile); } catch {}
-        reject(Object.assign(new Error('Failed to parse transcript data'), { statusCode: 422 }));
-      }
-    });
-  });
-};
+// ─── Fetch Transcript via youtube-transcript ─────────────────────────
+// Logic moved to youtubeTranscriptService.js
 
 // ─── Default Fallback Response ────────────────────────────────────
 const FALLBACK_RESPONSE = {
@@ -114,10 +49,10 @@ export const summarizeYoutubeVideo = async ({ url, language = 'English', userId 
     throw Object.assign(new Error(validation.error), { statusCode: 400 });
   }
 
-  // Step 2: Fetch transcript via yt-dlp
+  // Step 2: Fetch transcript via youtube-transcript
   let transcript;
   try {
-    transcript = await fetchTranscriptWithYtDlp(validation.videoId);
+    transcript = await getTranscript(url);
   } catch (error) {
     if (error.statusCode) throw error;
     throw Object.assign(
