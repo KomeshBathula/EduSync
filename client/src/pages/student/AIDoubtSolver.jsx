@@ -260,7 +260,7 @@ const AIDoubtSolver = () => {
               </button>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl font-heading font-bold text-text-primary flex items-center gap-2 sm:gap-3 truncate">
-                  <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-success flex-shrink-0" />
+                  <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
                   <span className="truncate">AI Doubt Solver</span>
                 </h1>
                 <p className="text-xs text-text-secondary mt-1 hidden sm:block">Context-aware • 24/7 Available • Persistent Memory</p>
@@ -344,7 +344,7 @@ const AIDoubtSolver = () => {
                       msg.type === 'ai'
                         ? msg.isError
                           ? 'bg-danger/20 text-danger'
-                          : 'bg-success/20 text-success'
+                          : 'bg-primary-light/20 text-primary'
                         : 'bg-primary/20 text-primary'
                     }`}
                   >
@@ -364,7 +364,7 @@ const AIDoubtSolver = () => {
                     className={`max-w-xs sm:max-w-md md:max-w-xl flex-1 ${msg.type === 'user' ? 'text-right' : ''}`}
                   >
                     <div
-                      className={`inline-block px-4 py-3 sm:px-5 sm:py-3 rounded-2xl text-sm leading-relaxed break-words transition-all ${
+                      className={`inline-block px-4 py-3 sm:px-5 sm:py-3 rounded-xl text-sm leading-relaxed break-words transition-all ${
                         msg.type === 'ai'
                           ? msg.isError
                             ? 'bg-danger/10 text-danger rounded-bl-none border border-danger/20'
@@ -386,10 +386,10 @@ const AIDoubtSolver = () => {
               {/* Typing Indicator */}
               {isTyping && (
                 <div className="flex gap-3 animate-fadeIn">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-full bg-success/20 text-success flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-full bg-primary-light/20 text-primary flex items-center justify-center">
                     <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <div className="px-4 py-3 sm:px-5 rounded-2xl rounded-bl-none bg-surface-alt text-text-primary border border-border-base shadow-sm flex items-center gap-1.5 h-10 sm:h-11">
+                  <div className="px-4 py-3 sm:px-5 rounded-xl rounded-bl-none bg-surface-alt text-text-primary border border-border-base shadow-sm flex items-center gap-1.5 h-10 sm:h-11">
                     <span className="w-2 h-2 bg-text-secondary rounded-full animate-bounce" style={{ animationDelay: '-0.3s' }} />
                     <span className="w-2 h-2 bg-text-secondary rounded-full animate-bounce" style={{ animationDelay: '-0.15s' }} />
                     <span className="w-2 h-2 bg-text-secondary rounded-full animate-bounce" />
@@ -425,12 +425,12 @@ const AIDoubtSolver = () => {
                     placeholder="Ask your doubt here..."
                     maxLength={MAX_MESSAGE_LENGTH}
                     disabled={isLoadingHistory || isTyping}
-                    className="w-full px-4 py-2.5 sm:py-3 text-sm bg-background border border-border-base rounded-2xl text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2.5 sm:py-3 text-sm bg-background border border-border-base rounded-xl text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <button
                     type="submit"
                     disabled={!input.trim() || isTyping || isLoadingHistory}
-                    className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-success hover:bg-success-light text-white disabled:bg-success/50 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm hover:shadow-md flex-shrink-0"
+                    className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary hover:bg-primary-light text-white disabled:bg-primary/50 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm hover:shadow-md flex-shrink-0"
                   >
                     <Send className="w-4 h-4" />
                   </button>

@@ -279,170 +279,178 @@ const AdminDashboard = () => {
     // ==========================================
     return (
         <PageContainer>
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-heading font-bold tracking-tight text-text-primary mb-2 flex items-center gap-3">
-                        <ShieldCheck className="w-8 h-8 text-warning" />
-                        System Administration
-                    </h1>
-                    <p className="text-text-secondary">Manage academic hierarchy and holistic system data</p>
-                </div>
-                <Button variant="danger" onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login'); }} className="flex items-center gap-2 text-sm">
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                </Button>
-            </div>
+            <div className="flex flex-col md:flex-row gap-8 min-h-[calc(100vh-4rem)]">
+                {/* Left Rail Navigation */}
+                <div className="w-full md:w-64 shrink-0 flex flex-col gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-warning/10 rounded-xl">
+                                <ShieldCheck className="w-6 h-6 text-warning" />
+                            </div>
+                            <h1 className="text-2xl font-heading font-bold text-text-primary tracking-tight">Admin</h1>
+                        </div>
+                        <p className="text-sm text-text-secondary leading-relaxed pl-1">
+                            System hierarchy and identity management.
+                        </p>
+                    </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-                <Card className="col-span-1 lg:col-span-1 p-4 shadow-level1 h-fit">
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 mt-4">
                         <button
                             onClick={() => setActiveTab('HIERARCHY')}
-                            className={`flex items-center gap-3 w-full p-3 rounded-[var(--radius-md)] transition-all ${activeTab === 'HIERARCHY' ? 'bg-primary-light/10 text-primary border border-primary/20' : 'text-text-secondary hover:bg-surface-alt hover:text-text-primary'}`}
+                            className={`flex items-center gap-3 w-full p-3 rounded-xl transition-all font-medium text-sm ${activeTab === 'HIERARCHY' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:bg-surface-alt hover:text-text-primary'}`}
                         >
-                            <Layers className="w-5 h-5" />
-                            <span className="font-semibold text-sm">Academic Hierarchy</span>
+                            <Layers className="w-4 h-4" /> Academic Hierarchy
                         </button>
                         <button
                             onClick={() => setActiveTab('USERS')}
-                            className={`flex items-center gap-3 w-full p-3 rounded-[var(--radius-md)] transition-all ${activeTab === 'USERS' ? 'bg-primary-light/10 text-primary border border-primary/20' : 'text-text-secondary hover:bg-surface-alt hover:text-text-primary'}`}
+                            className={`flex items-center gap-3 w-full p-3 rounded-xl transition-all font-medium text-sm ${activeTab === 'USERS' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:bg-surface-alt hover:text-text-primary'}`}
                         >
-                            <Users className="w-5 h-5" />
-                            <span className="font-semibold text-sm">User Directory</span>
+                            <Users className="w-4 h-4" /> User Directory
                         </button>
                     </div>
-                </Card>
+                    
+                    <div className="mt-auto pt-8 border-t border-border-base">
+                        <button onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login'); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-danger hover:bg-danger/10 transition-colors text-sm font-medium">
+                            <LogOut className="w-4 h-4" /> Sign Out
+                        </button>
+                    </div>
+                </div>
 
-                <div className="col-span-1 lg:col-span-3">
+                {/* Main Content Area */}
+                <div className="flex-1 min-w-0 bg-surface border border-border-base rounded-2xl p-6 shadow-sm">
                     {activeTab === 'HIERARCHY' && (
-                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
-                            <Card className="w-full p-0 overflow-hidden shadow-level1">
-                                <div className="flex justify-between items-center p-6 border-b border-border-base bg-surface-base">
-                                    <h3 className="text-xl font-heading font-bold text-text-primary">Hierarchy Configurations</h3>
-                                    <Button variant="primary" onClick={() => openStructureModal()} className="flex items-center gap-2 text-sm">
-                                        <Plus className="w-4 h-4" /> Add Branch Node
-                                    </Button>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="h-full flex flex-col">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 className="text-xl font-heading font-bold text-text-primary">Branch Nodes</h2>
+                                    <p className="text-sm text-text-secondary mt-1">Configure academic structures for content routing.</p>
                                 </div>
+                                <Button variant="primary" onClick={() => openStructureModal()} className="flex items-center gap-2">
+                                    <Plus className="w-4 h-4" /> New Node
+                                </Button>
+                            </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left whitespace-nowrap text-sm">
-                                        <thead className="bg-surface-alt border-b border-border-base">
+                            <div className="flex-1 overflow-auto rounded-xl border border-border-base bg-surface-base">
+                                <table className="w-full text-left whitespace-nowrap text-sm">
+                                    <thead className="bg-surface-alt border-b border-border-base sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider">Year</th>
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider">Branch</th>
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider">Section</th>
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider">Enrolled</th>
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-subtle bg-surface">
+                                        {structures.length === 0 ? (
                                             <tr>
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Year</th>
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Branch</th>
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Section</th>
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Student Count</th>
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider text-right">Actions</th>
+                                                <td colSpan="5" className="px-6 py-12 text-center">
+                                                    <Layers className="w-8 h-8 text-text-muted/30 mx-auto mb-3" />
+                                                    <p className="text-text-secondary font-medium">No branch nodes defined.</p>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border-subtle bg-surface">
-                                            {structures.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="5" className="px-6 py-8 text-center text-text-secondary italic">
-                                                        No academic structures found. Create a new branch node.
-                                                    </td>
-                                                </tr>
-                                            ) : structures.map((row) => (
-                                                <tr key={row._id} className="hover:bg-surface-alt/50 transition-colors group">
-                                                    <td className="px-6 py-4 font-medium text-text-primary">Year {row.year}</td>
-                                                    <td className="px-6 py-4 text-primary font-medium">{row.branch}</td>
-                                                    <td className="px-6 py-4 text-text-secondary">Sec {row.section}</td>
-                                                    <td className="px-6 py-4 font-mono text-text-muted">{row.students?.length || 0}</td>
-                                                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                                                        <button onClick={() => setViewStudentsModal({ isOpen: true, structure: row })} className="text-text-muted hover:text-primary hover:bg-primary-light/10 transition-colors p-1.5 rounded-md" title="View Enrolled Students">
-                                                            <Users className="w-4 h-4" />
-                                                        </button>
-                                                        <button onClick={() => openStructureModal(row)} className="text-text-muted hover:text-primary hover:bg-primary-light/10 transition-colors p-1.5 rounded-md" title="Edit Structure">
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteStructure(row._id)} className="text-text-muted hover:text-danger hover:bg-danger/10 transition-colors p-1.5 rounded-md" title="Delete Structure">
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
+                                        ) : structures.map((row) => (
+                                            <tr key={row._id} className="hover:bg-surface-alt/30 transition-colors">
+                                                <td className="px-6 py-4 text-text-primary">Year {row.year}</td>
+                                                <td className="px-6 py-4 text-text-primary font-medium">{row.branch}</td>
+                                                <td className="px-6 py-4 text-text-secondary">Sec {row.section}</td>
+                                                <td className="px-6 py-4">
+                                                    <Badge color="primary" className="font-mono">{row.students?.length || 0}</Badge>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button onClick={() => setViewStudentsModal({ isOpen: true, structure: row })} className="text-text-secondary hover:text-primary p-2 rounded-lg hover:bg-primary/10 transition-colors" title="View Students"><Users className="w-4 h-4" /></button>
+                                                        <button onClick={() => openStructureModal(row)} className="text-text-secondary hover:text-primary p-2 rounded-lg hover:bg-primary/10 transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
+                                                        <button onClick={() => handleDeleteStructure(row._id)} className="text-text-secondary hover:text-danger p-2 rounded-lg hover:bg-danger/10 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </motion.div>
                     )}
 
                     {activeTab === 'USERS' && (
-                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
-                            <Card className="w-full p-0 overflow-hidden shadow-level1">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 border-b border-border-base bg-surface-base">
-                                    <h3 className="text-xl font-heading font-bold text-text-primary">System Users</h3>
-                                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                                        <div className="flex gap-1 p-1 bg-surface-alt rounded-lg border border-border-base flex-1 sm:flex-none">
-                                            {['STUDENT', 'TEACHER'].map((r) => (
-                                                <button
-                                                    key={r}
-                                                    onClick={() => setUserRoleFilter(r)}
-                                                    className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${userRoleFilter === r ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-white/5'}`}
-                                                >
-                                                    {r === 'TEACHER' ? 'FACULTY' : r}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <Button variant="primary" onClick={() => openUserModal()} className="flex items-center gap-2 text-sm shrink-0">
-                                            <Plus className="w-4 h-4" /> Add User
-                                        </Button>
-                                        {userRoleFilter === 'STUDENT' && (
-                                            <Button variant="ghost" onClick={openBulkImportModal} className="flex items-center gap-2 text-sm shrink-0 border border-border-base">
-                                                <Upload className="w-4 h-4" /> Bulk Import
-                                            </Button>
-                                        )}
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="h-full flex flex-col">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                <div>
+                                    <h2 className="text-xl font-heading font-bold text-text-primary">Identity Directory</h2>
+                                    <p className="text-sm text-text-secondary mt-1">Manage system access and roles.</p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex bg-surface-alt border border-border-base rounded-lg p-1">
+                                        {['STUDENT', 'TEACHER'].map((r) => (
+                                            <button
+                                                key={r}
+                                                onClick={() => setUserRoleFilter(r)}
+                                                className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${userRoleFilter === r ? 'bg-surface border border-border-subtle text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
+                                            >
+                                                {r === 'TEACHER' ? 'Faculty' : 'Students'}
+                                            </button>
+                                        ))}
                                     </div>
+                                    <Button variant="primary" onClick={() => openUserModal()} className="flex items-center gap-2">
+                                        <Plus className="w-4 h-4" /> New User
+                                    </Button>
+                                    {userRoleFilter === 'STUDENT' && (
+                                        <Button variant="secondary" onClick={openBulkImportModal} className="flex items-center gap-2">
+                                            <Upload className="w-4 h-4" /> Import CSV
+                                        </Button>
+                                    )}
                                 </div>
+                            </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left whitespace-nowrap text-sm">
-                                        <thead className="bg-surface-alt border-b border-border-base">
+                            <div className="flex-1 overflow-auto rounded-xl border border-border-base bg-surface-base">
+                                <table className="w-full text-left whitespace-nowrap text-sm">
+                                    <thead className="bg-surface-alt border-b border-border-base sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider">Identity</th>
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider">Role</th>
+                                            {userRoleFilter === 'STUDENT' && <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider">Context</th>}
+                                            <th className="px-6 py-4 font-medium text-text-secondary uppercase text-xs tracking-wider text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-subtle bg-surface">
+                                        {users.length === 0 ? (
                                             <tr>
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Name & Email</th>
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Role</th>
-                                                {userRoleFilter === 'STUDENT' && <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider">Class Context</th>}
-                                                <th className="px-6 py-4 font-semibold text-text-secondary uppercase text-xs tracking-wider text-right">Actions</th>
+                                                <td colSpan={userRoleFilter === 'STUDENT' ? "4" : "3"} className="px-6 py-12 text-center">
+                                                    <Users className="w-8 h-8 text-text-muted/30 mx-auto mb-3" />
+                                                    <p className="text-text-secondary font-medium">No identities found in this category.</p>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border-subtle bg-surface">
-                                            {users.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={userRoleFilter === 'STUDENT' ? "4" : "3"} className="px-6 py-8 text-center text-text-secondary italic">
-                                                        No {userRoleFilter.toLowerCase()}s found.
+                                        ) : users.map((user) => (
+                                            <tr key={user._id} className="hover:bg-surface-alt/30 transition-colors">
+                                                <td className="px-6 py-3">
+                                                    <p className="font-medium text-text-primary">{user.name}</p>
+                                                    <p className="text-xs text-text-secondary font-mono mt-0.5">{user.email}</p>
+                                                </td>
+                                                <td className="px-6 py-3">
+                                                    <Badge color={user.role === 'ADMIN' ? 'danger' : user.role === 'TEACHER' ? 'primary' : 'success'}>
+                                                        {user.role === 'TEACHER' ? 'FACULTY' : user.role}
+                                                    </Badge>
+                                                </td>
+                                                {userRoleFilter === 'STUDENT' && (
+                                                    <td className="px-6 py-3">
+                                                        {user.academicContext ? (
+                                                            <span className="text-sm text-text-secondary">Y{user.academicContext.year} • {user.academicContext.branch} • {user.academicContext.section}</span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-warning/10 text-warning text-xs font-medium border border-warning/20">Unassigned</span>
+                                                        )}
                                                     </td>
-                                                </tr>
-                                            ) : users.map((user) => (
-                                                <tr key={user._id} className="hover:bg-surface-alt/50 transition-colors group">
-                                                    <td className="px-6 py-4">
-                                                        <div className="font-medium text-text-primary">{user.name}</div>
-                                                        <div className="text-xs text-text-secondary mt-0.5">{user.email}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <Badge color={user.role === 'ADMIN' ? 'danger' : user.role === 'TEACHER' ? 'primary' : 'success'}>
-                                                            {user.role === 'TEACHER' ? 'FACULTY' : user.role}
-                                                        </Badge>
-                                                    </td>
-                                                    {userRoleFilter === 'STUDENT' && (
-                                                        <td className="px-6 py-4 text-sm text-text-secondary">
-                                                            {user.academicContext ? `Y${user.academicContext.year} • ${user.academicContext.branch} • Sec ${user.academicContext.section}` : <span className="text-warning italic text-xs">Unassigned</span>}
-                                                        </td>
-                                                    )}
-                                                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2 h-full py-auto">
-                                                        <button onClick={() => openUserModal(user)} className="text-text-muted hover:text-primary hover:bg-primary-light/10 transition-colors p-1.5 rounded-md mt-2">
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteUser(user._id)} className="text-text-muted hover:text-danger hover:bg-danger/10 transition-colors p-1.5 rounded-md mt-2">
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
+                                                )}
+                                                <td className="px-6 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button onClick={() => openUserModal(user)} className="text-text-secondary hover:text-primary p-2 rounded-lg hover:bg-primary/10 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                                                        <button onClick={() => handleDeleteUser(user._id)} className="text-text-secondary hover:text-danger p-2 rounded-lg hover:bg-danger/10 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </motion.div>
                     )}
                 </div>
@@ -453,29 +461,31 @@ const AdminDashboard = () => {
                 {isStructureModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background-base/80 backdrop-blur-sm">
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md">
-                            <Card className="p-6 border-primary/30 shadow-level3">
+                            <Card className="p-6 shadow-xl border border-border-base">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-bold font-heading text-text-primary flex items-center gap-2">
+                                    <h3 className="text-xl font-heading font-bold text-text-primary flex items-center gap-2">
                                         <Layers className="w-5 h-5 text-primary" />
-                                        {editStructureId ? 'Edit' : 'Add'} Academic Node
+                                        {editStructureId ? 'Edit' : 'Create'} Branch Node
                                     </h3>
                                     <button onClick={closeStructureModal} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-5 h-5" /></button>
                                 </div>
-                                <form onSubmit={handleSaveStructure} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Year</label>
-                                        <input type="text" placeholder="e.g. 2" required value={year} onChange={e => setYear(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
+                                <form onSubmit={handleSaveStructure} className="space-y-5">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-text-secondary mb-1.5">Academic Year</label>
+                                            <input type="text" placeholder="e.g. 2" required value={year} onChange={e => setYear(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2.5 text-text-primary focus:ring-1 focus:ring-primary focus:border-primary transition-all" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-text-secondary mb-1.5">Section Name</label>
+                                            <input type="text" placeholder="e.g. A" required value={section} onChange={e => setSection(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2.5 text-text-primary focus:ring-1 focus:ring-primary focus:border-primary transition-all" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Branch Name</label>
-                                        <input type="text" placeholder="e.g. Computer Science" required value={branch} onChange={e => setBranch(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Section</label>
-                                        <input type="text" placeholder="e.g. A" required value={section} onChange={e => setSection(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Department / Branch</label>
+                                        <input type="text" placeholder="e.g. Computer Science" required value={branch} onChange={e => setBranch(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2.5 text-text-primary focus:ring-1 focus:ring-primary focus:border-primary transition-all" />
                                     </div>
                                     <div className="pt-2">
-                                        <Button type="submit" variant="primary" className="w-full justify-center">Save Configuration</Button>
+                                        <Button type="submit" variant="primary" className="w-full py-2.5">{editStructureId ? 'Update Node' : 'Initialize Node'}</Button>
                                     </div>
                                 </form>
                             </Card>
@@ -489,74 +499,67 @@ const AdminDashboard = () => {
                 {isUserModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background-base/80 backdrop-blur-sm">
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md">
-                            <Card className="p-6 border-primary/30 shadow-level3">
+                            <Card className="p-6 shadow-xl border border-border-base">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-bold font-heading text-text-primary flex items-center gap-2">
+                                    <h3 className="text-xl font-heading font-bold text-text-primary flex items-center gap-2">
                                         <Users className="w-5 h-5 text-primary" />
-                                        {editUserId ? 'Edit' : 'Create'} User Profile
+                                        {editUserId ? 'Modify' : 'Provision'} Identity
                                     </h3>
                                     <button onClick={() => setIsUserModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-5 h-5" /></button>
                                 </div>
                                 <form onSubmit={handleSaveUser} className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-text-secondary mb-1.5">Full Name</label>
-                                        <input type="text" required value={uName} onChange={e => setUName(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
+                                        <input type="text" required value={uName} onChange={e => setUName(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2.5 text-text-primary focus:ring-1 focus:ring-primary transition-all" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Email</label>
-                                        <input type="email" required value={uEmail} onChange={e => setUEmail(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Email Address</label>
+                                        <input type="email" required value={uEmail} onChange={e => setUEmail(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2.5 text-text-primary focus:ring-1 focus:ring-primary transition-all font-mono text-sm" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">{editUserId ? 'Reset Password' : 'Set Initial Password'}</label>
-                                        <input type="password" required={!editUserId} value={uPassword} onChange={e => setUPassword(e.target.value)} placeholder={editUserId ? "Leave blank to keep existing password" : "Minimum 6 characters"} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
-                                        {editUserId && <p className="text-xs text-text-muted mt-1 italic">👉 Leave blank to keep existing password</p>}
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Security Credential</label>
+                                        <input type="password" required={!editUserId} value={uPassword} onChange={e => setUPassword(e.target.value)} placeholder={editUserId ? "Leave blank to preserve" : "min. 6 characters"} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2.5 text-text-primary focus:ring-1 focus:ring-primary transition-all" />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Role</label>
-                                        <div className="relative">
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-text-secondary mb-1.5">Authorization Role</label>
                                             {editUserId && uRole === 'STUDENT' ? (
-                                                <div className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-muted cursor-not-allowed flex items-center gap-2">
-                                                    Student (locked)
-                                                    <span className="text-xs text-warning ml-auto">Permanent</span>
+                                                <div className="w-full bg-surface-alt border border-border-base rounded-lg px-4 py-2.5 text-text-secondary text-sm flex items-center">
+                                                    Student <span className="ml-auto text-xs text-warning">Locked</span>
                                                 </div>
                                             ) : (
-                                                <select value={uRole} onChange={e => setURole(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer">
-                                                    <option value="STUDENT">Student</option>
-                                                    <option value="TEACHER">Faculty</option>
-                                                </select>
+                                                <div className="relative">
+                                                    <select value={uRole} onChange={e => setURole(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg pl-4 pr-8 py-2.5 text-text-primary focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer">
+                                                        <option value="STUDENT">Student</option>
+                                                        <option value="TEACHER">Faculty</option>
+                                                    </select>
+                                                    <ChevronDown className="w-4 h-4 text-text-muted absolute right-3 top-3 pointer-events-none" />
+                                                </div>
                                             )}
-                                            {!(editUserId && uRole === 'STUDENT') && <div className="absolute right-4 top-3 pointer-events-none text-text-secondary">&#9660;</div>}
                                         </div>
-                                    </div>
-
-                                    {uRole === 'STUDENT' && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-text-secondary mb-1.5">Academic Context</label>
-                                            <div className="relative">
+                                        
+                                        {uRole === 'STUDENT' && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-text-secondary mb-1.5">Academic Context</label>
                                                 {editUserId && uContextId ? (
-                                                    <div className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-muted cursor-not-allowed flex items-center gap-2 text-sm">
-                                                        {(() => {
-                                                            const s = structures.find(s => s._id === uContextId);
-                                                            return s ? `Year ${s.year} - ${s.branch} - Sec ${s.section} (locked)` : 'Assigned (locked)';
-                                                        })()}
-                                                        <span className="text-xs text-warning ml-auto">Permanent</span>
+                                                    <div className="w-full bg-surface-alt border border-border-base rounded-lg px-4 py-2.5 text-text-secondary text-sm flex items-center">
+                                                        Mapped <span className="ml-auto text-xs text-warning">Locked</span>
                                                     </div>
                                                 ) : (
-                                                    <>
-                                                        <select value={uContextId} onChange={e => setUContextId(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer text-sm">
+                                                    <div className="relative">
+                                                        <select value={uContextId} onChange={e => setUContextId(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg pl-4 pr-8 py-2.5 text-text-primary focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer text-sm">
                                                             <option value="">Unassigned</option>
-                                                            {structures.map(s => (
-                                                                <option key={s._id} value={s._id}>Year {s.year} - {s.branch} - Sec {s.section}</option>
-                                                            ))}
+                                                            {structures.map(s => <option key={s._id} value={s._id}>Y{s.year} • Sec {s.section}</option>)}
                                                         </select>
-                                                        <div className="absolute right-4 top-3 pointer-events-none text-text-secondary text-xs">&#9660;</div>
-                                                    </>
+                                                        <ChevronDown className="w-4 h-4 text-text-muted absolute right-3 top-3 pointer-events-none" />
+                                                    </div>
                                                 )}
                                             </div>
-                                        </div>
-                                    )}
-                                    <div className="pt-2">
-                                        <Button type="submit" variant="primary" className="w-full justify-center">{editUserId ? 'Update Details' : 'Create User'}</Button>
+                                        )}
+                                    </div>
+                                    <div className="pt-4 mt-2 border-t border-border-subtle">
+                                        <Button type="submit" variant="primary" className="w-full py-2.5">{editUserId ? 'Commit Changes' : 'Provision Identity'}</Button>
                                     </div>
                                 </form>
                             </Card>
@@ -565,20 +568,20 @@ const AdminDashboard = () => {
                 )}
             </AnimatePresence>
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Modal - Kept minimal and robust */}
             <AnimatePresence>
                 {deleteModal.isOpen && (
                     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background-base/80 backdrop-blur-sm">
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-sm">
-                            <Card className="p-6 text-center border-danger/20 shadow-level3">
-                                <div className="w-16 h-16 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4 border border-danger/20">
-                                    <Trash2 className="w-8 h-8 text-danger" />
+                            <Card className="p-6 text-center border border-danger/20 shadow-xl">
+                                <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4 border border-danger/20">
+                                    <AlertTriangle className="w-6 h-6 text-danger" />
                                 </div>
                                 <h3 className="text-xl font-heading font-bold text-text-primary mb-2">{deleteModal.title}</h3>
-                                <p className="text-text-secondary text-sm mb-6">{deleteModal.text}</p>
+                                <p className="text-text-secondary text-sm mb-6 leading-relaxed">{deleteModal.text}</p>
                                 <div className="flex gap-3">
-                                    <Button variant="ghost" onClick={() => setDeleteModal({ ...deleteModal, isOpen: false })} className="flex-1 justify-center bg-surface-alt hover:bg-border-subtle border border-border-base transition-colors">Cancel</Button>
-                                    <Button variant="danger" onClick={executeDelete} className="flex-1 justify-center text-white shadow-lg transition-colors">Delete</Button>
+                                    <Button variant="secondary" onClick={() => setDeleteModal({ ...deleteModal, isOpen: false })} className="flex-1 justify-center">Abort</Button>
+                                    <Button variant="danger" onClick={executeDelete} className="flex-1 justify-center shadow-md">Confirm Deletion</Button>
                                 </div>
                             </Card>
                         </motion.div>
@@ -586,53 +589,40 @@ const AdminDashboard = () => {
                 )}
             </AnimatePresence>
 
-            {/* View Section-wise Students Modal */}
+            {/* Modals Retained Below: View Students, Bulk Import */}
             <AnimatePresence>
                 {viewStudentsModal.isOpen && viewStudentsModal.structure && (
                     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-background-base/80 backdrop-blur-sm">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0" onClick={() => setViewStudentsModal({ isOpen: false, structure: null })} />
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-2xl">
-                            <Card className="p-6 max-h-[80vh] flex flex-col shadow-level3 border-primary/20">
-                                <div className="flex justify-between items-center mb-6">
+                            <Card className="p-6 max-h-[80vh] flex flex-col shadow-xl border border-border-base">
+                                <div className="flex justify-between items-center mb-6 border-b border-border-subtle pb-4">
                                     <div>
                                         <h3 className="text-xl font-heading font-bold text-text-primary flex items-center gap-2">
-                                            <Users className="w-5 h-5 text-primary" />
-                                            Enrolled Students
+                                            <Users className="w-5 h-5 text-primary" /> Directory Roster
                                         </h3>
-                                        <p className="text-sm text-text-secondary mt-1">
-                                            Year {viewStudentsModal.structure.year} • {viewStudentsModal.structure.branch} • Sec {viewStudentsModal.structure.section}
-                                        </p>
+                                        <p className="text-sm text-text-secondary mt-1">Year {viewStudentsModal.structure.year} • {viewStudentsModal.structure.branch} • Sec {viewStudentsModal.structure.section}</p>
                                     </div>
                                     <button onClick={() => setViewStudentsModal({ isOpen: false, structure: null })} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-5 h-5" /></button>
                                 </div>
-
                                 <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
                                     {viewStudentsModal.structure.students && viewStudentsModal.structure.students.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                             {viewStudentsModal.structure.students.map(student => (
-                                                <div key={student._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[var(--radius-md)] bg-surface-alt border border-border-base hover:border-primary/30 transition-colors gap-3">
+                                                <div key={student._id} className="flex items-center justify-between p-3 rounded-lg bg-surface border border-border-base hover:border-primary/30 transition-colors">
                                                     <div>
-                                                        <div className="font-semibold text-text-primary">{student.name}</div>
-                                                        <div className="text-xs text-text-secondary mt-0.5">{student.email}</div>
+                                                        <p className="font-medium text-text-primary text-sm">{student.name}</p>
+                                                        <p className="text-xs text-text-secondary font-mono mt-0.5">{student.email}</p>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <Badge color="primary" className="hidden sm:inline-flex font-mono text-[10px] tracking-wide">
-                                                            ID: {student.rollNumber || 'PENDING'}
-                                                        </Badge>
-                                                        <button onClick={() => handleEditStudentFromModal(student, viewStudentsModal.structure)} className="text-text-muted hover:text-primary hover:bg-primary-light/10 transition-colors p-1.5 rounded-md cursor-pointer">
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteStudentFromModal(student._id)} className="text-text-muted hover:text-danger hover:bg-danger/10 transition-colors p-1.5 rounded-md cursor-pointer">
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge color="secondary" className="font-mono text-[10px] tracking-wider bg-surface-alt border border-border-base">{student.rollNumber || 'PENDING'}</Badge>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="py-12 text-center text-text-secondary border border-dashed border-border-base rounded-[var(--radius-md)] bg-surface-base">
-                                            <Users className="w-10 h-10 mx-auto mb-3 opacity-30 text-text-muted" />
-                                            <p className="text-sm font-medium text-text-muted">No students enrolled in this section yet.</p>
+                                        <div className="py-12 text-center">
+                                            <p className="text-sm font-medium text-text-muted">No enrollments in this node.</p>
                                         </div>
                                     )}
                                 </div>
@@ -642,84 +632,54 @@ const AdminDashboard = () => {
                 )}
             </AnimatePresence>
 
-            {/* Bulk Import Modal */}
             <AnimatePresence>
                 {isBulkImportModalOpen && (
                     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-background-base/80 backdrop-blur-sm">
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-lg">
-                            <Card className="p-6 border-primary/30 shadow-level3">
+                            <Card className="p-6 shadow-xl border border-border-base">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="text-xl font-bold font-heading text-text-primary flex items-center gap-2">
-                                        <FileSpreadsheet className="w-5 h-5 text-primary" />
-                                        Bulk Import Students
+                                        <FileSpreadsheet className="w-5 h-5 text-primary" /> Batch Provisioning
                                     </h3>
                                     <button onClick={() => setIsBulkImportModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-5 h-5" /></button>
                                 </div>
-
-                                <div className="space-y-4">
+                                <div className="space-y-5">
                                     <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Excel File (.xlsx, .xls)</label>
-                                        <input type="file" accept=".xlsx,.xls" onChange={handleBulkFileChange} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary-dark cursor-pointer" />
-                                        <p className="text-xs text-text-muted mt-1">Required columns: "Name of the Student", "Roll Number", "Section"</p>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Source Dataset (.xlsx)</label>
+                                        <input type="file" accept=".xlsx,.xls" onChange={handleBulkFileChange} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2 text-text-primary text-sm file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer transition-colors" />
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Target Section</label>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Target Destination Node</label>
                                         <div className="relative">
-                                            <select value={bulkSectionId} onChange={e => setBulkSectionId(e.target.value)} className="w-full bg-surface-alt border border-border-base rounded-[var(--radius-md)] px-4 py-2.5 text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer text-sm">
-                                                <option value="">Select a section</option>
-                                                {structures.map(s => (
-                                                    <option key={s._id} value={s._id}>Year {s.year} - {s.branch} - Sec {s.section}</option>
-                                                ))}
+                                            <select value={bulkSectionId} onChange={e => setBulkSectionId(e.target.value)} className="w-full bg-surface border border-border-base rounded-lg px-4 py-2.5 text-text-primary focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer text-sm">
+                                                <option value="">Select routing node</option>
+                                                {structures.map(s => <option key={s._id} value={s._id}>Year {s.year} • {s.branch} • Sec {s.section}</option>)}
                                             </select>
-                                            <div className="absolute right-4 top-3 pointer-events-none text-text-secondary text-xs">&#9660;</div>
+                                            <ChevronDown className="w-4 h-4 text-text-muted absolute right-4 top-3 pointer-events-none" />
                                         </div>
                                     </div>
-
                                     <div className="pt-2">
-                                        <Button variant="primary" onClick={handleBulkImport} disabled={!bulkFile || !bulkSectionId || bulkImporting} className="w-full justify-center flex items-center gap-2">
-                                            <Upload className="w-4 h-4" />
-                                            {bulkImporting ? 'Importing...' : 'Upload & Import'}
+                                        <Button variant="primary" onClick={handleBulkImport} disabled={!bulkFile || !bulkSectionId || bulkImporting} className="w-full py-2.5 flex items-center justify-center gap-2">
+                                            <Upload className="w-4 h-4" /> {bulkImporting ? 'Processing Data...' : 'Execute Import'}
                                         </Button>
                                     </div>
-
                                     {bulkResult && (
-                                        <div className={`mt-4 p-4 rounded-[var(--radius-md)] border ${bulkResult.error ? 'bg-danger/5 border-danger/20' : 'bg-success/5 border-success/20'}`}>
+                                        <div className={`mt-4 p-4 rounded-lg border ${bulkResult.error ? 'bg-danger/10 border-danger/20' : 'bg-success/10 border-success/20'}`}>
                                             {bulkResult.error ? (
                                                 <div className="flex items-start gap-2">
-                                                    <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
+                                                    <AlertTriangle className="w-5 h-5 text-danger shrink-0" />
                                                     <p className="text-sm text-danger">{bulkResult.error}</p>
                                                 </div>
                                             ) : (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <CheckCircle className="w-5 h-5 text-success" />
-                                                        <span className="text-sm font-medium text-text-primary">Import Complete</span>
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2 text-success font-medium">
+                                                        <CheckCircle className="w-5 h-5" /> Operation Succeeded
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                                                        <div className="p-2 bg-surface-alt rounded-md">
-                                                            <div className="font-bold text-text-primary">{bulkResult.totalRows}</div>
-                                                            <div className="text-xs text-text-muted">Total Rows</div>
-                                                        </div>
-                                                        <div className="p-2 bg-surface-alt rounded-md">
-                                                            <div className="font-bold text-success">{bulkResult.insertedCount}</div>
-                                                            <div className="text-xs text-text-muted">Inserted</div>
-                                                        </div>
-                                                        <div className="p-2 bg-surface-alt rounded-md">
-                                                            <div className="font-bold text-warning">{bulkResult.duplicateCount}</div>
-                                                            <div className="text-xs text-text-muted">Duplicates</div>
-                                                        </div>
+                                                        <div className="bg-surface rounded-md p-2 border border-border-base"><div className="font-bold text-text-primary">{bulkResult.totalRows}</div><div className="text-xs text-text-muted">Total</div></div>
+                                                        <div className="bg-surface rounded-md p-2 border border-border-base"><div className="font-bold text-success">{bulkResult.insertedCount}</div><div className="text-xs text-text-muted">Inserted</div></div>
+                                                        <div className="bg-surface rounded-md p-2 border border-border-base"><div className="font-bold text-warning">{bulkResult.duplicateCount}</div><div className="text-xs text-text-muted">Skipped</div></div>
                                                     </div>
-                                                    {bulkResult.errors && bulkResult.errors.length > 0 && (
-                                                        <div className="mt-2 max-h-32 overflow-y-auto text-xs text-text-secondary space-y-1">
-                                                            {bulkResult.errors.map((err, i) => (
-                                                                <div key={i} className="flex items-start gap-1">
-                                                                    <AlertTriangle className="w-3 h-3 text-warning shrink-0 mt-0.5" />
-                                                                    {err}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             )}
                                         </div>

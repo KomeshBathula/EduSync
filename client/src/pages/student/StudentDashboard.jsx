@@ -1,25 +1,81 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/common/Card';
 import PageContainer from '../../components/common/PageContainer';
-import SectionHeader from '../../components/common/SectionHeader';
-import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, AlertTriangle, TrendingUp, Cpu, LogOut, Video, MessageSquare, ArrowRight, FileText, Sparkles, Loader2, Search, X, Download } from 'lucide-react';
+import { BookOpen, AlertTriangle, Play, BrainCircuit, LogOut, Video, MessageSquare, ArrowRight, FileText, Sparkles, Loader2, X, Download, TrendingUp, CheckCircle2, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import NotificationBell from '../../components/common/NotificationBell';
+
+// --- Helper Components ---
+
+const RiskArc = ({ score, label }) => {
+    // Math for half-circle arc
+    const radius = 80;
+    const circumference = Math.PI * radius; // Half circle
+    const strokeDashoffset = circumference - (score / 100) * circumference;
+    
+    let colorClass = 'text-success-base';
+    let strokeColor = 'var(--color-success-base)';
+    let bgColor = 'var(--color-success-light)';
+    let msg = "On track";
+
+    if (label === 'MEDIUM') {
+        colorClass = 'text-warning-base';
+        strokeColor = 'var(--color-warning-base)';
+        bgColor = 'var(--color-warning-light)';
+        msg = "Needs attention";
+    } else if (label === 'HIGH') {
+        colorClass = 'text-danger-base';
+        strokeColor = 'var(--color-danger-base)';
+        bgColor = 'var(--color-danger-light)';
+        msg = "Critical risk";
+    }
+
+    return (
+        <div className="relative w-full flex flex-col items-center">
+            <div className="relative w-48 h-28 overflow-hidden flex justify-center">
+                <svg className="w-48 h-48 transform rotate-180" viewBox="0 0 200 200">
+                    {/* Background Arc */}
+                    <circle cx="100" cy="100" r={radius} fill="none" stroke="var(--color-border-subtle)" strokeWidth="16" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset="0" />
+                    {/* Foreground Arc */}
+                    <motion.circle 
+                        initial={{ strokeDashoffset: circumference }}
+                        animate={{ strokeDashoffset }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        cx="100" cy="100" r={radius} fill="none" stroke={strokeColor} strokeWidth="16" strokeDasharray={`${circumference} ${circumference}`} strokeLinecap="round" 
+                    />
+                </svg>
+                <div className="absolute bottom-0 left-0 w-full flex flex-col items-center pb-2">
+                    <span className={`text-4xl font-heading font-bold ${colorClass}`}>{score}%</span>
+                </div>
+            </div>
+            <div className="text-center mt-2">
+                <Badge className="uppercase tracking-widest text-[10px] font-bold px-2 py-0.5" style={{ backgroundColor: `${bgColor}20`, color: strokeColor }}>
+                    {label} RISK
+                </Badge>
+                <p className="text-xs text-text-secondary mt-1">{msg}</p>
+            </div>
+        </div>
+    );
+};
 
 const StudentDashboard = () => {
     const navigate = useNavigate();
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [recommendations, setRecommendations] = useState(null);
-    const [recsLoading, setRecsLoading] = useState(false);
-    const [recsError, setRecsError] = useState(null);
     const [downloadingId, setDownloadingId] = useState(null);
     const [viewingMaterial, setViewingMaterial] = useState(null);
+
+    // Dynamic Greeting
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good morning";
+        if (hour < 18) return "Good afternoon";
+        return "Good evening";
+    };
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -32,23 +88,8 @@ const StudentDashboard = () => {
                 setLoading(false);
             }
         };
-
         fetchDashboardData();
     }, []);
-
-    const handleGetRecommendations = async () => {
-        setRecsLoading(true);
-        setRecsError(null);
-        try {
-            const res = await api.get('/api/student/recommendations');
-            setRecommendations(res.data);
-        } catch (error) {
-            console.error('Failed to get recommendations:', error);
-            setRecsError(error.response?.data?.message || 'Failed to generate recommendations. Please try again.');
-        } finally {
-            setRecsLoading(false);
-        }
-    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -57,426 +98,309 @@ const StudentDashboard = () => {
     };
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center text-text-secondary font-body text-xl">Loading Interface...</div>;
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    <p className="text-text-secondary font-medium">Initializing Workspace...</p>
+                </div>
+            </div>
+        );
     }
 
     if (!dashboardData) {
-        return <div className="min-h-screen flex items-center justify-center text-danger font-body text-xl">Failed to load dashboard data.</div>;
+        return <div className="min-h-screen flex items-center justify-center text-danger font-body text-xl">Failed to load workspace.</div>;
     }
 
     const { user, progressionData, availableQuizzes, riskMetrics, recommendedResources, quizHistory } = dashboardData;
 
+    // Calculate progression narrative
+    const hasProgressData = progressionData && progressionData.length >= 2;
+    const firstScore = hasProgressData ? progressionData[0].score : 0;
+    const latestScore = hasProgressData ? progressionData[progressionData.length - 1].score : 0;
+    const scoreDiff = Math.round(latestScore - firstScore);
+    const isImproving = scoreDiff > 0;
+
     return (
         <PageContainer>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            {/* 1. Header & Command Center Greeting */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                 <div>
-                    <h1 className="text-3xl font-heading font-bold tracking-tight text-text-primary mb-1">
-                        Welcome back, {user.name}
+                    <div className="flex items-center gap-2 text-sm text-text-secondary mb-2 font-medium">
+                        <BookOpen className="w-4 h-4 text-primary" />
+                        <span>{user.contextString}</span>
+                    </div>
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-text-primary tracking-tight">
+                        {getGreeting()}, {user.name.split(' ')[0]}.
                     </h1>
-                    <p className="text-text-secondary">Your Adaptive Learning Path</p>
+                    <p className="text-text-secondary mt-2 text-lg">Ready to improve today?</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Badge color="primary" className="px-3 py-1.5 flex items-center gap-2 bg-surface">
-                        <BookOpen className="w-4 h-4" />
-                        <span className="font-medium text-sm">{user.contextString}</span>
-                    </Badge>
                     <NotificationBell />
-                    <Button variant="danger" onClick={handleLogout} className="px-4 py-2 text-sm flex items-center gap-2">
-                        <LogOut className="w-4 h-4" />
-                        Logout
-                    </Button>
+                    <button onClick={handleLogout} className="p-2.5 rounded-xl border border-border-base text-text-secondary hover:bg-surface-alt hover:text-danger transition-colors">
+                        <LogOut className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
 
-            {/* Quick Actions Grid - Asymmetrical Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
-                <Card level={2} onClick={() => navigate('/student/youtube')} className="md:col-span-3 cursor-pointer group hover:border-danger hover:shadow-level3">
-                    <div className="p-6 flex flex-col h-full justify-between gap-4">
-                        <div className="w-12 h-12 bg-danger-light/10 text-danger rounded-xl flex items-center justify-center group-hover:bg-danger-light/20 transition-colors">
-                            <Video className="w-6 h-6" />
+            {/* 2. Smart Focus Panel (Actionable Priority) */}
+            <div className="mb-10">
+                <div className="bg-primary/5 border border-primary/20 rounded-[var(--radius-xl)] p-1">
+                    <div className="bg-surface rounded-[calc(var(--radius-xl)-4px)] p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
+                        <div className="flex-shrink-0 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                            <Sparkles className="w-8 h-8 text-primary" />
                         </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-text-primary">YouTube AI</h3>
-                            <p className="text-sm text-text-secondary">Summarize & Learn via Video</p>
+                        <div className="flex-1 text-center md:text-left">
+                            <h2 className="text-xl font-bold text-text-primary mb-2">Today's Focus: {user.topWeakness !== 'None detected yet' ? user.topWeakness : 'General Revision'}</h2>
+                            <p className="text-text-secondary max-w-2xl">
+                                {riskMetrics.label === 'HIGH' 
+                                    ? "Your risk level is high. We strongly recommend generating a Smart Revision plan to tackle your weak areas immediately."
+                                    : availableQuizzes.length > 0 
+                                        ? `You have ${availableQuizzes.length} pending assignments. Knocking one out now will keep you on track.`
+                                        : "You're caught up on assignments. Use the AI Doubt Solver to clarify any lingering questions from today's lectures."}
+                            </p>
                         </div>
-                    </div>
-                </Card>
-
-                <Card level={2} onClick={() => navigate('/student/doubt-solver')} className="md:col-span-3 cursor-pointer group hover:border-success hover:shadow-level3">
-                    <div className="p-6 flex flex-col h-full justify-between gap-4">
-                        <div className="w-12 h-12 bg-success-light/10 text-success rounded-xl flex items-center justify-center group-hover:bg-success-light/20 transition-colors">
-                            <MessageSquare className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-text-primary">AI Doubt Solver</h3>
-                            <p className="text-sm text-text-secondary">24/7 Contextual Chatbot</p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card level={2} onClick={() => navigate('/student/smart-revision')} className="md:col-span-6 cursor-pointer group hover:border-primary hover:shadow-level3 bg-primary text-text-inverse">
-                    <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 h-full">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-surface/20 rounded-xl flex items-center justify-center">
-                                <Cpu className="w-6 h-6 text-surface" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold">Smart Revision Generator</h3>
-                                <p className="text-sm text-primary-light font-medium uppercase tracking-widest mt-1">Target Weakness: {user.topWeakness}</p>
-                            </div>
-                        </div>
-                        <div className="w-10 h-10 bg-surface text-primary rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                            <ArrowRight className="w-5 h-5" />
+                        <div className="flex-shrink-0 w-full md:w-auto">
+                            <button 
+                                onClick={() => navigate('/student/smart-revision')}
+                                className="w-full md:w-auto px-6 py-3 bg-primary hover:bg-primary-hover text-white font-medium rounded-xl transition-all shadow-level1 hover:shadow-level2 flex items-center justify-center gap-2"
+                            >
+                                Generate Study Plan <ArrowRight className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
-                </Card>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Col - Progress & Activity */}
-                <div className="lg:col-span-2 space-y-8">
-                    <Card className="p-6 h-96 flex flex-col">
-                        <div className="flex justify-between items-start mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* LEFT COLUMN: Narrative & Tasks (Span 8) */}
+                <div className="lg:col-span-8 space-y-8">
+                    
+                    {/* Progress Story */}
+                    <Card className="p-6 md:p-8 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+                        
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8 relative z-10">
                             <div>
-                                <h3 className="text-xl font-heading font-bold text-text-primary">Progression Analytics</h3>
-                                <p className="text-sm text-text-secondary">Quiz Accuracy Trends</p>
+                                <h3 className="text-xl font-bold font-heading text-text-primary mb-1">Your Progress Story</h3>
+                                {hasProgressData ? (
+                                    <p className="text-text-secondary text-sm">
+                                        You started at <span className="font-bold text-text-primary">{firstScore}%</span> and are now at <span className="font-bold text-text-primary">{latestScore}%</span>. 
+                                        {isImproving ? (
+                                            <span className="text-success ml-1 inline-flex items-center gap-1"><TrendingUp className="w-3 h-3"/> That's a +{scoreDiff}% improvement.</span>
+                                        ) : (
+                                            <span className="text-warning ml-1"> Let's work on getting those numbers back up.</span>
+                                        )}
+                                    </p>
+                                ) : (
+                                    <p className="text-text-secondary text-sm">Complete more quizzes to see your growth story here.</p>
+                                )}
                             </div>
-                            <div className="p-2 bg-primary-light/10 text-primary rounded-lg border border-primary/20">
-                                <TrendingUp className="w-5 h-5" />
+                            <div className="flex-shrink-0 bg-surface-alt px-4 py-2 rounded-lg border border-border-subtle">
+                                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Current Accuracy</span>
+                                <div className="text-2xl font-bold text-text-primary">{latestScore}%</div>
                             </div>
                         </div>
-                        <div className="flex-1 min-h-0">
+
+                        <div className="h-56 w-full relative z-10 -ml-4">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={progressionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <AreaChart data={progressionData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--color-primary-base)" stopOpacity={0.2} />
+                                            <stop offset="5%" stopColor="var(--color-primary-base)" stopOpacity={0.15} />
                                             <stop offset="95%" stopColor="var(--color-primary-base)" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)' }} fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)' }} domain={[0, 100]} fontSize={12} tickLine={false} axisLine={false} />
+                                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)' }} fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                                    <YAxis hide domain={[0, 100]} />
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: 'var(--color-surface-base)', borderColor: 'var(--color-border-base)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)' }}
+                                        contentStyle={{ backgroundColor: 'var(--color-surface-base)', borderColor: 'var(--color-border-base)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-level2)', padding: '8px 12px' }}
+                                        itemStyle={{ color: 'var(--color-primary-base)', fontWeight: 'bold' }}
                                     />
-                                    <Area type="monotone" dataKey="score" stroke="var(--color-primary-base)" strokeWidth={3} fill="url(#colorScore)" />
+                                    <Area type="monotone" dataKey="score" stroke="var(--color-primary-base)" strokeWidth={3} fill="url(#colorScore)" activeDot={{ r: 6, fill: 'var(--color-primary-base)', stroke: 'var(--color-surface-base)', strokeWidth: 2 }} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="p-6">
-                            <h4 className="text-lg font-bold text-text-primary mb-1">Available Quizzes</h4>
-                            <p className="text-sm text-text-secondary mb-6">{availableQuizzes.length || 0} New assignments pending</p>
-
+                    {/* Task List: Quizzes & Materials */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Quizzes */}
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-text-primary">Assignments</h3>
+                                {availableQuizzes.length > 0 && <Badge color="primary">{availableQuizzes.length} Pending</Badge>}
+                            </div>
+                            
                             <div className="space-y-3">
                                 {availableQuizzes.length === 0 ? (
-                                    <p className="text-text-secondary text-sm bg-surface-alt p-4 rounded-[var(--radius-sm)] border border-border-subtle">No new quizzes assigned.</p>
+                                    <div className="p-6 border border-dashed border-border-base rounded-[var(--radius-lg)] text-center bg-surface-alt/50">
+                                        <CheckCircle2 className="w-8 h-8 text-success/50 mx-auto mb-2" />
+                                        <p className="text-sm text-text-secondary">You are all caught up!</p>
+                                    </div>
                                 ) : (
                                     availableQuizzes.map((quiz, i) => (
-                                        <div
-                                            key={quiz._id || i}
-                                            onClick={() => navigate(`/student/quiz/${quiz._id}`)}
-                                            className="p-4 rounded-[var(--radius-md)] bg-surface border border-border-base flex justify-between items-center hover:border-primary hover:shadow-level1 transition-all cursor-pointer group"
-                                        >
-                                            <span className="text-sm font-semibold text-text-primary group-hover:text-primary transition-colors">{quiz.title}</span>
-                                            <Badge color="primary">{quiz.baseDifficulty || 'Mixed'}</Badge>
+                                        <div key={quiz._id} onClick={() => navigate(`/student/quiz/${quiz._id}`)} className="group p-4 bg-surface border border-border-base rounded-[var(--radius-lg)] hover:border-primary hover:shadow-level1 cursor-pointer transition-all flex items-start gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
+                                                <Play className="w-4 h-4 ml-0.5" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-sm font-bold text-text-primary truncate">{quiz.title}</h4>
+                                                <div className="flex items-center gap-3 mt-1 text-xs text-text-secondary">
+                                                    <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> ~15 mins</span>
+                                                    <span>•</span>
+                                                    <span className={quiz.baseDifficulty === 'HARD' ? 'text-danger' : quiz.baseDifficulty === 'MEDIUM' ? 'text-warning' : 'text-success'}>
+                                                        {quiz.baseDifficulty || 'Mixed'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))
                                 )}
                             </div>
-                        </Card>
+                        </div>
 
-                        <Card className="p-6">
-                            <h4 className="text-lg font-bold text-text-primary mb-1">Quiz Timeline</h4>
-                            <p className="text-sm text-text-secondary mb-6">Recent assessment results</p>
-
-                            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border-base before:to-transparent">
-                                {!quizHistory || quizHistory.length === 0 ? (
-                                    <p className="text-text-secondary text-sm bg-surface-alt p-4 rounded-[var(--radius-sm)] border border-border-subtle relative z-10">You haven't attempted any quizzes yet.</p>
+                        {/* Materials */}
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-text-primary">Class Materials</h3>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {recommendedResources.length === 0 ? (
+                                    <div className="p-6 border border-dashed border-border-base rounded-[var(--radius-lg)] text-center bg-surface-alt/50">
+                                        <FileText className="w-8 h-8 text-text-secondary/50 mx-auto mb-2" />
+                                        <p className="text-sm text-text-secondary">No materials uploaded yet.</p>
+                                    </div>
                                 ) : (
-                                    quizHistory.map((qr, i) => {
-                                        const isHigh = qr.score >= 80;
-                                        const isMed = qr.score >= 50;
-                                        const dotBg = isHigh ? 'bg-success-light/20' : isMed ? 'bg-warning-light/20' : 'bg-danger-light/20';
-                                        const innerDot = isHigh ? 'bg-success' : isMed ? 'bg-warning' : 'bg-danger';
-                                        const colorStr = isHigh ? 'success' : isMed ? 'warning' : 'danger';
-
-                                        return (
-                                            <div key={qr.id || i} className="relative z-10 flex items-center gap-4">
-                                                <div className={`w-8 h-8 flex-shrink-0 rounded-full ${dotBg} flex items-center justify-center border-2 border-surface`}>
-                                                    <div className={`w-2.5 h-2.5 rounded-full ${innerDot}`}></div>
-                                                </div>
-                                                <div className="flex-1 p-3 rounded-[var(--radius-md)] bg-surface border border-border-base">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <span className="text-sm font-semibold text-text-primary">{qr.title}</span>
-                                                        <span className="text-xs text-text-secondary">{new Date(qr.date).toLocaleDateString()}</span>
-                                                    </div>
-                                                    <Badge color={colorStr}>{Math.round(qr.score)}% Score</Badge>
-                                                </div>
+                                    recommendedResources.slice(0, 4).map((res, i) => (
+                                        <div 
+                                            key={i} 
+                                            className="group p-3 bg-surface border border-border-base rounded-[var(--radius-lg)] hover:border-secondary hover:shadow-level1 cursor-pointer transition-all flex items-center gap-3"
+                                            onClick={async () => {
+                                                if (downloadingId) return;
+                                                try {
+                                                    setDownloadingId(res.id);
+                                                    const response = await api.get(res.url, { responseType: 'blob' });
+                                                    const file = new Blob([response.data], { type: response.headers['content-type'] });
+                                                    const fileURL = URL.createObjectURL(file);
+                                                    setViewingMaterial({ url: fileURL, title: res.title, type: res.type || response.headers['content-type'] });
+                                                } catch (error) {
+                                                    console.error('Failed to load material', error);
+                                                    alert('Failed to open material.');
+                                                } finally {
+                                                    setDownloadingId(null);
+                                                }
+                                            }}
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0 text-secondary">
+                                                {downloadingId === res.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                                             </div>
-                                        );
-                                    })
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-sm font-semibold text-text-primary truncate group-hover:text-secondary transition-colors">{res.title}</h4>
+                                                <p className="text-xs text-text-secondary uppercase tracking-wider mt-0.5">{res.type}</p>
+                                            </div>
+                                        </div>
+                                    ))
                                 )}
                             </div>
-                        </Card>
+                        </div>
                     </div>
                 </div>
 
-                {/* Right Col - Risk Meter & Documents */}
-                <div className="space-y-8">
-                    <Card className="p-6 flex flex-col items-center">
-                        <div className="w-full flex items-center gap-3 mb-8">
-                            <div className={`p-2 rounded-lg ${riskMetrics.label === 'HIGH' ? 'bg-danger/10 text-danger' : riskMetrics.label === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
-                                <AlertTriangle className="w-5 h-5" />
-                            </div>
-                            <h3 className="text-xl font-heading font-bold text-text-primary">Academic Risk</h3>
-                        </div>
-
-                        <div className="relative w-48 h-48 flex items-center justify-center mb-8">
-                            <svg className="w-full h-full transform -rotate-90 drop-shadow-sm">
-                                <circle cx="96" cy="96" r="84" stroke="var(--color-border-subtle)" strokeWidth="16" fill="none" />
-                                <motion.circle
-                                    initial={{ strokeDashoffset: 528 }}
-                                    animate={{ strokeDashoffset: 528 - (528 * riskMetrics.score) / 100 }}
-                                    transition={{ duration: 1.5, ease: "easeOut" }}
-                                    cx="96"
-                                    cy="96"
-                                    r="84"
-                                    stroke={riskMetrics.label === 'HIGH' ? 'var(--color-danger-base)' : riskMetrics.label === 'MEDIUM' ? 'var(--color-warning-base)' : 'var(--color-success-base)'}
-                                    strokeWidth="16"
-                                    fill="none"
-                                    strokeDasharray="528"
-                                    strokeLinecap="round"
-                                />
-                            </svg>
-                            <div className="absolute flex flex-col items-center text-center">
-                                <div className={`text-4xl font-mono font-bold tracking-tighter ${riskMetrics.label === 'HIGH' ? 'text-danger' : riskMetrics.label === 'MEDIUM' ? 'text-warning' : 'text-success'}`}>{riskMetrics.score}%</div>
-                                <div className="text-xs font-bold text-text-secondary uppercase tracking-widest mt-1">{riskMetrics.label}</div>
+                {/* RIGHT COLUMN: Tools & Risk (Span 4) */}
+                <div className="lg:col-span-4 space-y-8">
+                    
+                    {/* Risk Meter Redesign */}
+                    <Card className="p-6 md:p-8">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-lg font-bold text-text-primary">Status</h3>
+                            <div className="w-8 h-8 rounded-full bg-surface-alt flex items-center justify-center border border-border-subtle">
+                                <AlertTriangle className="w-4 h-4 text-text-secondary" />
                             </div>
                         </div>
-
+                        
+                        <RiskArc score={riskMetrics.score} label={riskMetrics.label} />
+                        
                         {user.topWeakness !== 'None detected yet' && (
-                            <div className="w-full flex flex-col items-center justify-center p-4 rounded-[var(--radius-sm)] bg-surface-alt border border-border-base text-center">
-                                <span className="text-xs text-text-secondary font-medium uppercase tracking-wider mb-1">Primary Weakness</span>
-                                <Badge color="danger" className="text-sm px-3 py-1">{user.topWeakness}</Badge>
-                            </div>
-                        )}
-                    </Card>
-
-                    <Card className="p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-lg bg-surface-alt border border-border-base text-text-secondary">
-                                <FileText className="w-5 h-5" />
-                            </div>
-                            <h3 className="text-lg font-bold text-text-primary">Course Materials</h3>
-                        </div>
-
-                        <ul className="space-y-3">
-                            {recommendedResources.length === 0 ? (
-                                <p className="text-text-secondary text-sm bg-surface-alt p-4 rounded-[var(--radius-sm)] border border-border-subtle">No materials uploaded yet.</p>
-                            ) : (
-                                recommendedResources.map((res, i) => (
-                                    <li
-                                        key={i}
-                                        className={`flex flex-col p-4 rounded-[var(--radius-md)] bg-surface border border-border-base transition-all ${downloadingId === res.id ? 'opacity-70 pointer-events-none' : 'hover:border-primary hover:shadow-level1 cursor-pointer group'}`}
-                                        onClick={async () => {
-                                            if (downloadingId) return;
-                                            try {
-                                                setDownloadingId(res.id);
-                                                const response = await api.get(res.url, { responseType: 'blob' });
-                                                const file = new Blob([response.data], { type: response.headers['content-type'] });
-                                                const fileURL = URL.createObjectURL(file);
-                                                
-                                                setViewingMaterial({
-                                                    url: fileURL,
-                                                    title: res.title,
-                                                    type: res.type || response.headers['content-type']
-                                                });
-                                            } catch (error) {
-                                                console.error('Failed to load material', error);
-                                                if (error.response?.status === 401) {
-                                                    window.location.href = '/login';
-                                                } else {
-                                                    alert('Failed to open material. It may be unavailable.');
-                                                }
-                                            } finally {
-                                                setDownloadingId(null);
-                                            }
-                                        }}
-                                    >
-                                        <div className="flex items-start justify-between gap-4 mb-2">
-                                            <h5 className="text-sm font-semibold text-text-primary leading-tight group-hover:text-primary transition-colors">{res.title}</h5>
-                                            {downloadingId === res.id ? (
-                                                <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                                            ) : (
-                                                <ArrowRight className="w-4 h-4 text-text-secondary group-hover:text-primary group-hover:translate-x-1 transition-transform" />
-                                            )}
-                                        </div>
-                                        <div className="flex items-center text-xs text-text-secondary gap-2">
-                                            <span className="uppercase font-mono">{res.type}</span>
-                                            <span>•</span>
-                                            <span>AI Recommended</span>
-                                        </div>
-                                    </li>
-                                ))
-                            )}
-                        </ul>
-                    </Card>
-
-                    {/* AI Adaptive Recommendations */}
-                    <Card className="p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 rounded-lg bg-primary-light/10 text-primary border border-primary/20">
-                                <Sparkles className="w-5 h-5" />
-                            </div>
-                            <h3 className="text-lg font-bold text-text-primary">AI Study Plan</h3>
-                        </div>
-
-                        {!recommendations && !recsLoading && !recsError && (
-                            <button
-                                onClick={handleGetRecommendations}
-                                className="w-full py-3 bg-primary hover:bg-primary-light text-text-inverse font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
-                            >
-                                <Sparkles className="w-4 h-4" /> Get Personalized Recommendations
-                            </button>
-                        )}
-
-                        {recsError && (
-                            <div className="space-y-3">
-                                <div className="p-3 rounded-lg bg-danger/5 border border-danger/20">
-                                    <p className="text-xs text-danger font-medium">{recsError}</p>
+                            <div className="mt-8 pt-6 border-t border-border-subtle">
+                                <p className="text-xs text-text-secondary font-bold uppercase tracking-wider mb-2">Crucial Weakness</p>
+                                <div className="p-3 bg-danger/5 border border-danger/20 rounded-xl flex items-start gap-3">
+                                    <BrainCircuit className="w-5 h-5 text-danger shrink-0 mt-0.5" />
+                                    <span className="text-sm font-medium text-danger-base leading-tight">{user.topWeakness}</span>
                                 </div>
-                                <button
-                                    onClick={handleGetRecommendations}
-                                    className="w-full py-2 text-sm text-primary font-medium hover:bg-primary/5 rounded-lg border border-primary/20 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <Sparkles className="w-3 h-3" /> Try Again
-                                </button>
-                            </div>
-                        )}
-
-                        {recsLoading && (
-                            <div className="flex flex-col items-center py-6">
-                                <Loader2 className="w-6 h-6 text-primary animate-spin mb-2" />
-                                <p className="text-xs text-text-secondary">Analyzing your learning profile...</p>
-                            </div>
-                        )}
-
-                        {recommendations && (
-                            <div className="space-y-4">
-                                {recommendations.priorityTopics?.length > 0 && (
-                                    <div>
-                                        <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Priority Topics</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {recommendations.priorityTopics.map((t, i) => (
-                                                <Badge key={i} color="danger" className="text-xs">{typeof t === 'object' ? (t.topic || t.name || JSON.stringify(t)) : t}</Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {recommendations.studyPlan?.length > 0 && (
-                                    <div>
-                                        <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Study Plan</h4>
-                                        <ul className="space-y-2">
-                                            {recommendations.studyPlan.map((step, i) => (
-                                                <li key={i} className="text-sm text-text-primary flex items-start gap-2">
-                                                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                                                    {typeof step === 'object' ? (step.action || step.step || JSON.stringify(step)) : step}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {recommendations.youtubeSearchTerms?.length > 0 && (
-                                    <div>
-                                        <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Recommended Searches</h4>
-                                        <div className="space-y-1.5">
-                                            {recommendations.youtubeSearchTerms.map((term, i) => (
-                                                <div key={i} className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:text-primary-light transition-colors" onClick={() => navigate('/student/youtube')}>
-                                                    <Search className="w-3 h-3" />
-                                                    <span className="underline underline-offset-2">{typeof term === 'object' ? (term.query || term.term || JSON.stringify(term)) : term}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {recommendations.motivationalNote && (
-                                    <div className="p-3 rounded-lg bg-success/5 border border-success/20 mt-2">
-                                        <p className="text-xs text-success font-medium">{recommendations.motivationalNote}</p>
-                                    </div>
-                                )}
-
-                                <button onClick={handleGetRecommendations} className="w-full mt-2 py-2 text-sm text-primary font-medium hover:bg-primary/5 rounded-lg border border-primary/20 transition-all flex items-center justify-center gap-2">
-                                    <Sparkles className="w-3 h-3" /> Refresh
-                                </button>
                             </div>
                         )}
                     </Card>
+
+                    {/* AI Tool Launcher */}
+                    <div>
+                        <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-3 px-1">AI Tool Launcher</h3>
+                        <div className="space-y-3">
+                            <button onClick={() => navigate('/student/doubt-solver')} className="w-full text-left group p-4 bg-surface border border-border-base hover:border-primary rounded-[var(--radius-lg)] transition-all shadow-sm hover:shadow-level1 flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <MessageSquare className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-text-primary">Doubt Solver</h4>
+                                    <p className="text-xs text-text-secondary mt-0.5">24/7 Contextual Tutor</p>
+                                </div>
+                            </button>
+
+                            <button onClick={() => navigate('/student/youtube')} className="w-full text-left group p-4 bg-surface border border-border-base hover:border-danger rounded-[var(--radius-lg)] transition-all shadow-sm hover:shadow-level1 flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Video className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-text-primary">YouTube AI</h4>
+                                    <p className="text-xs text-text-secondary mt-0.5">Summarize & Test Videos</p>
+                                </div>
+                            </button>
+
+                            <button onClick={() => navigate('/student/smart-revision')} className="w-full text-left group p-4 bg-surface border border-border-base hover:border-accent rounded-[var(--radius-lg)] transition-all shadow-sm hover:shadow-level1 flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Sparkles className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-text-primary">Smart Revision</h4>
+                                    <p className="text-xs text-text-secondary mt-0.5">Generate Study Plans</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Document Viewer Modal */}
+            {/* Document Viewer Modal (Unchanged structurally, naturally inherits new styles) */}
             <AnimatePresence>
                 {viewingMaterial && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
-                        onClick={() => {
-                            URL.revokeObjectURL(viewingMaterial.url);
-                            setViewingMaterial(null);
-                        }}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-text-primary/40 backdrop-blur-sm"
+                        onClick={() => { URL.revokeObjectURL(viewingMaterial.url); setViewingMaterial(null); }}
                     >
                         <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full max-w-5xl h-[85vh] bg-surface rounded-2xl shadow-level3 border border-border-base flex flex-col overflow-hidden"
+                            className="w-full max-w-5xl h-[85vh] bg-surface rounded-[var(--radius-xl)] shadow-level3 flex flex-col overflow-hidden"
                         >
                             <div className="flex items-center justify-between p-4 border-b border-border-base bg-surface-alt">
                                 <div className="flex items-center gap-3">
-                                    <FileText className="w-5 h-5 text-primary" />
+                                    <div className="p-2 bg-primary/10 rounded-lg text-primary"><FileText className="w-5 h-5" /></div>
                                     <h3 className="font-bold text-text-primary truncate max-w-md">{viewingMaterial.title}</h3>
-                                    <Badge color="primary" className="ml-2 uppercase">{typeof viewingMaterial.type === 'string' ? viewingMaterial.type.split('/')[1] || viewingMaterial.type : 'FILE'}</Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            const a = document.createElement('a');
-                                            a.href = viewingMaterial.url;
-                                            a.download = viewingMaterial.title;
-                                            a.click();
-                                        }}
-                                        className="flex items-center gap-2"
-                                    >
+                                    <button onClick={() => { const a = document.createElement('a'); a.href = viewingMaterial.url; a.download = viewingMaterial.title; a.click(); }} className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2">
                                         <Download className="w-4 h-4" /> Download
-                                    </Button>
-                                    <button
-                                        onClick={() => {
-                                            URL.revokeObjectURL(viewingMaterial.url);
-                                            setViewingMaterial(null);
-                                        }}
-                                        className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-base transition-colors"
-                                    >
+                                    </button>
+                                    <button onClick={() => { URL.revokeObjectURL(viewingMaterial.url); setViewingMaterial(null); }} className="p-2 rounded-lg text-text-secondary hover:bg-border-base transition-colors">
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex-1 bg-surface-alt/50 relative">
-                                <iframe
-                                    src={viewingMaterial.url}
-                                    className="w-full h-full border-none"
-                                    title={viewingMaterial.title}
-                                />
+                            <div className="flex-1 bg-surface-hover/30 relative">
+                                <iframe src={viewingMaterial.url} className="w-full h-full border-none" title={viewingMaterial.title} />
                             </div>
                         </motion.div>
                     </motion.div>

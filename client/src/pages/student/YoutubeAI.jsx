@@ -14,7 +14,7 @@ const NOTE_SIZES = ['Small', 'Medium', 'Detailed'];
 const CollapsibleSection = ({ title, icon: Icon, children, defaultOpen = false, iconColor = 'text-text-secondary' }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="border border-border-base rounded-xl overflow-hidden">
+    <div className="border border-border-base rounded-lg overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-4 bg-surface-alt/50 hover:bg-surface-alt transition-colors"
@@ -189,13 +189,13 @@ const YoutubeAI = () => {
 
       <div className="mb-6">
         <h1 className="text-3xl font-heading font-bold tracking-tight text-text-primary mb-2 flex items-center gap-3">
-          <Video className="w-8 h-8 text-danger" /> YouTube AI Summarizer
+          <Video className="w-8 h-8 text-primary" /> YouTube AI Summarizer
         </h1>
         <p className="text-text-secondary">Paste any educational YouTube link — AI extracts transcript, concepts, and practice questions.</p>
       </div>
 
       {/* Input Form */}
-      <Card className="mb-6 border border-danger/20">
+      <Card className="mb-6 border border-border-base">
         <form onSubmit={handleProcess} className="p-4 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -205,7 +205,7 @@ const YoutubeAI = () => {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.youtube.com/watch?v=..."
-                className="w-full bg-background border border-border-base rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-danger/50 pl-12"
+                className="w-full bg-background border border-border-base rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-danger/50 pl-12"
                 maxLength={200}
               />
               <Search className="w-5 h-5 text-text-secondary absolute left-4 top-3.5" />
@@ -216,7 +216,7 @@ const YoutubeAI = () => {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="appearance-none bg-background border border-border-base rounded-xl px-4 py-3 pr-10 text-text-primary focus:outline-none focus:border-danger/50 text-sm cursor-pointer min-w-[140px]"
+                className="appearance-none bg-background border border-border-base rounded-lg px-4 py-3 pr-10 text-text-primary focus:outline-none focus:border-danger/50 text-sm cursor-pointer min-w-[140px]"
               >
                 {LANGUAGES.map(lang => (
                   <option key={lang} value={lang}>{lang}</option>
@@ -230,7 +230,7 @@ const YoutubeAI = () => {
               <select
                 value={noteSize}
                 onChange={(e) => setNoteSize(e.target.value)}
-                className="appearance-none bg-background border border-border-base rounded-xl px-4 py-3 pr-10 text-text-primary focus:outline-none focus:border-danger/50 text-sm cursor-pointer min-w-[130px]"
+                className="appearance-none bg-background border border-border-base rounded-lg px-4 py-3 pr-10 text-text-primary focus:outline-none focus:border-danger/50 text-sm cursor-pointer min-w-[130px]"
               >
                 {NOTE_SIZES.map(size => (
                   <option key={size} value={size}>{size}</option>
@@ -242,7 +242,7 @@ const YoutubeAI = () => {
             <button
               type="submit"
               disabled={isProcessing}
-              className="px-6 py-3 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg min-w-[140px]"
+              className="px-6 py-3 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg min-w-[140px]"
             >
               {isProcessing ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
@@ -258,19 +258,19 @@ const YoutubeAI = () => {
       {error && (
         <Card className="border border-danger/30 bg-danger/5">
           <div className="p-4 flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-danger shrink-0" />
-            <p className="text-sm text-danger">{error}</p>
+            <AlertTriangle className="w-5 h-5 text-primary shrink-0" />
+            <p className="text-sm text-primary">{error}</p>
           </div>
         </Card>
       )}
 
       {/* Loading State */}
       {isProcessing && (
-        <Card className="border border-danger/20">
+        <Card className="border border-border-base">
           <div className="p-12 flex flex-col items-center justify-center">
             <div className="relative w-16 h-16 mb-6">
               <div className="absolute inset-0 border-4 border-t-danger border-r-danger border-b-transparent border-l-transparent rounded-full animate-spin" />
-              <Video className="w-8 h-8 text-danger absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+              <Video className="w-8 h-8 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
             </div>
             <h2 className="text-lg font-bold text-text-primary mb-2">Analyzing Video...</h2>
             <p className="text-sm text-text-secondary text-center">Fetching transcript, extracting concepts, and generating structured notes.</p>
@@ -301,7 +301,7 @@ const YoutubeAI = () => {
               )}
               <div className="p-4">
                 <h2 className="text-lg font-bold text-text-primary mb-2">{result.title}</h2>
-                <span className="text-xs font-bold uppercase tracking-widest text-danger bg-danger/10 px-3 py-1 rounded-full">
+                <span className="text-xs font-bold uppercase tracking-widest text-primary bg-danger/10 px-3 py-1 rounded-full">
                   AI Analyzed
                 </span>
               </div>
@@ -370,7 +370,7 @@ const YoutubeAI = () => {
           )}
 
           {/* Post-Reading Quiz Section */}
-          <Card className="border border-warning/20 bg-warning/5">
+          <Card className="border border-warning/20 bg-amber-600/5">
             <div className="p-5">
               {!quizData && !quizLoading && (
                 <div className="space-y-4">
@@ -383,7 +383,7 @@ const YoutubeAI = () => {
                   
                   {/* Warning if summary is too short */}
                   {result?.summary && result.summary.trim().length < 50 && (
-                    <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
+                    <div className="bg-amber-600/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                       <p className="text-xs text-text-secondary">
                         The summary is too short to generate a meaningful quiz. Try using a longer video or select "Detailed" note size.
@@ -395,16 +395,16 @@ const YoutubeAI = () => {
                     <button
                       onClick={() => setShowQuizConfig(true)}
                       disabled={!result?.summary || result.summary.trim().length < 50}
-                      className={`px-5 py-2.5 font-bold rounded-xl transition-all flex items-center gap-2 text-sm ${
+                      className={`px-5 py-2.5 font-bold rounded-lg transition-all flex items-center gap-2 text-sm ${
                         result?.summary && result.summary.trim().length >= 50
-                          ? 'bg-warning hover:bg-warning/80 text-white cursor-pointer'
+                          ? 'bg-amber-600 hover:bg-amber-600/80 text-white cursor-pointer'
                           : 'bg-surface-alt text-text-secondary cursor-not-allowed opacity-50'
                       }`}
                     >
                       <Brain className="w-4 h-4" /> Generate Quiz
                     </button>
                   ) : (
-                    <div className="bg-surface rounded-xl border border-warning/20 p-5 space-y-4">
+                    <div className="bg-surface rounded-lg border border-warning/20 p-5 space-y-4">
                       <div>
                         <label className="block text-sm font-semibold text-text-primary mb-3">Number of Questions:</label>
                         <div className="flex gap-3">
@@ -414,7 +414,7 @@ const YoutubeAI = () => {
                               onClick={() => setQuizQuestionCount(count)}
                               className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-sm transition-all ${
                                 quizQuestionCount === count
-                                  ? 'bg-warning text-white border-warning'
+                                  ? 'bg-amber-600 text-white border-warning'
                                   : 'bg-surface-alt text-text-secondary border border-border-base hover:border-warning/50'
                               }`}
                             >
@@ -433,7 +433,7 @@ const YoutubeAI = () => {
                               onClick={() => setQuizDifficulty(level)}
                               className={`flex-1 py-2.5 px-3 rounded-lg font-bold text-sm transition-all ${
                                 quizDifficulty === level
-                                  ? 'bg-warning text-white border-warning'
+                                  ? 'bg-amber-600 text-white border-warning'
                                   : 'bg-surface-alt text-text-secondary border border-border-base hover:border-warning/50'
                               }`}
                             >
@@ -446,13 +446,13 @@ const YoutubeAI = () => {
                       <div className="flex gap-3 pt-2">
                         <button
                           onClick={handleGenerateQuiz}
-                          className="flex-1 px-5 py-2.5 bg-warning hover:bg-warning/80 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm"
+                          className="flex-1 px-5 py-2.5 bg-amber-600 hover:bg-amber-600/80 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
                         >
                           <Brain className="w-4 h-4" /> Generate Quiz
                         </button>
                         <button
                           onClick={() => setShowQuizConfig(false)}
-                          className="flex-1 px-5 py-2.5 bg-surface-alt hover:bg-surface-alt/80 text-text-secondary font-bold rounded-xl transition-all text-sm"
+                          className="flex-1 px-5 py-2.5 bg-surface-alt hover:bg-surface-alt/80 text-text-secondary font-bold rounded-lg transition-all text-sm"
                         >
                           Cancel
                         </button>
@@ -477,8 +477,8 @@ const YoutubeAI = () => {
                     </h3>
                     {quizData.riskLevel && (
                       <span className={`text-xs px-2 py-1 rounded-lg font-medium ${
-                        quizData.riskLevel === 'HIGH' ? 'bg-danger/10 text-danger border border-danger/20' :
-                        quizData.riskLevel === 'MEDIUM' ? 'bg-warning/10 text-warning border border-warning/20' :
+                        quizData.riskLevel === 'HIGH' ? 'bg-danger/10 text-primary border border-border-base' :
+                        quizData.riskLevel === 'MEDIUM' ? 'bg-amber-600/10 text-warning border border-warning/20' :
                         'bg-success/10 text-success border border-success/20'
                       }`}>
                         Difficulty: {quizData.riskLevel === 'HIGH' ? 'Basic' : quizData.riskLevel === 'MEDIUM' ? 'Moderate' : 'Challenging'}
@@ -492,7 +492,7 @@ const YoutubeAI = () => {
                     const isCorrect = userAnswer === q.correctOptionIndex;
 
                     return (
-                      <div key={qIdx} className="bg-surface rounded-xl border border-border-base p-4">
+                      <div key={qIdx} className="bg-surface rounded-lg border border-border-base p-4">
                         <p className="text-sm font-semibold text-text-primary mb-3">
                           {qIdx + 1}. {q.questionText}
                         </p>
@@ -503,10 +503,10 @@ const YoutubeAI = () => {
                               if (optIdx === q.correctOptionIndex) {
                                 optionStyle = 'border-success bg-success/10 text-success';
                               } else if (optIdx === userAnswer && !isCorrect) {
-                                optionStyle = 'border-danger bg-danger/10 text-danger';
+                                optionStyle = 'border-danger bg-danger/10 text-primary';
                               }
                             } else if (optIdx === userAnswer) {
-                              optionStyle = 'border-warning bg-warning/10 text-warning';
+                              optionStyle = 'border-warning bg-amber-600/10 text-warning';
                             }
 
                             return (
@@ -545,13 +545,13 @@ const YoutubeAI = () => {
                     <button
                       onClick={handleQuizSubmit}
                       disabled={Object.keys(quizAnswers).length < quizData.questions.length}
-                      className="w-full py-3 bg-warning hover:bg-warning/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-amber-600 hover:bg-amber-600/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" /> Submit Quiz
                     </button>
                   ) : (
-                    <div className={`p-4 rounded-xl text-center ${
-                      getQuizScore().correct >= getQuizScore().total * 0.7 ? 'bg-success/10 border border-success/20' : 'bg-danger/10 border border-danger/20'
+                    <div className={`p-4 rounded-lg text-center ${
+                      getQuizScore().correct >= getQuizScore().total * 0.7 ? 'bg-success/10 border border-success/20' : 'bg-danger/10 border border-border-base'
                     }`}>
                       <p className="text-lg font-bold text-text-primary">
                         Score: {getQuizScore().correct} / {getQuizScore().total}
