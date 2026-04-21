@@ -43,7 +43,7 @@ export const uploadMaterial = async (req, res) => {
 
 export const getMaterialsByContext = async (req, res) => {
     try {
-        const materials = await listMaterialsByContext(req.params.contextId);
+        const materials = await listMaterialsByContext(req.params.contextId, req.user);
         res.status(200).json(materials);
     } catch (error) {
         res.status(error.statusCode || 500).json({ message: error.message });
@@ -52,7 +52,7 @@ export const getMaterialsByContext = async (req, res) => {
 
 export const downloadMaterial = async (req, res) => {
     try {
-        const material = await getMaterialById(req.params.id);
+        const material = await getMaterialById(req.params.id, req.user);
 
         res.set({
             'Content-Type': material.mimetype,

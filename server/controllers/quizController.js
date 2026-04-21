@@ -11,6 +11,31 @@ import { cleanupExamSession, updateBehaviorProfile, checkSessionLocked } from '.
 import examSessionManager from '../services/examSessionManager.js';
 
 const MAX_QUESTIONS = 50;
+const DEFAULT_QUESTION_WEIGHT = 1;
+
+const normalizeQuestionWeight = (weight) => {
+    if (typeof weight === 'number' && Number.isFinite(weight) && weight > 0) {
+        return weight;
+    }
+    return DEFAULT_QUESTION_WEIGHT;
+};
+
+const ensureStudentHasQuizAccess = (quiz, user) => {
+    if (!quiz?.targetAudience) {
+        return;
+    }
+
+    if (!user?.academicContext || String(user.academicContext) !== String(quiz.targetAudience)) {
+        const error = new Error('You are not authorized to access this quiz');
+        error.statusCode = 403;
+        throw error;
+    }
+};
+
+const buildPdfSourceUrl = (file) => {
+    const safeFileName = encodeURIComponent(file?.originalname || 'uploaded-document.pdf');
+    return `uploaded://${safeFileName}`;
+};
 
 // @desc    Generate AI Quiz
 // @route   POST /api/quiz/generate
@@ -18,6 +43,8 @@ const MAX_QUESTIONS = 50;
 export const generateQuiz = async (req, res) => {
     try {
         const { title, topic, difficulty, numQuestions, targetAudienceId } = req.body;
+        const sourceType = req.file ? 'PDF' : 'TOPIC';
+        const sourceFileUrl = req.file ? buildPdfSourceUrl(req.file) : null;
 
         let finalTitle;
         if (title && title.trim() !== "") {
@@ -36,7 +63,7 @@ export const generateQuiz = async (req, res) => {
 
         // Generate quiz using Groq
         const generatedQuestions = await generateQuizFromGroq({
-            sourceType: req.file ? 'PDF' : 'TOPIC',
+            sourceType,
             topicName: topic,
             pdfBuffer: req.file?.buffer || null,
             difficulty: difficulty || 'MEDIUM',
@@ -46,7 +73,8 @@ export const generateQuiz = async (req, res) => {
         const quiz = await Quiz.create({
             title: finalTitle,
             createdBy: req.user._id,
-            sourceType: req.file ? 'PDF' : 'TOPIC',
+            sourceType,
+            sourceFileUrl,
             topicName: topic,
             baseDifficulty: difficulty || 'MEDIUM',
             questions: generatedQuestions,
@@ -82,6 +110,38 @@ export const generateQuiz = async (req, res) => {
     }
 };
 
+// @desc    List quizzes for a specific section
+// @route   GET /api/quiz/section/:contextId
+// @access  Teacher/Admin
+export const getQuizzesBySection = async (req, res) => {
+    try {
+        const { contextId } = req.params;
+
+        if (!contextId) {
+            return res.status(400).json({ message: 'Context ID is required' });
+        }
+
+        if (
+            req.user?.role === 'TEACHER' &&
+            req.user?.academicContext &&
+            String(req.user.academicContext) !== String(contextId)
+        ) {
+            return res.status(403).json({ message: 'Not authorized to view quizzes for this section' });
+        }
+
+        const quizzes = await Quiz.find({
+            targetAudience: contextId,
+            status: 'PUBLISHED',
+        })
+            .select('title baseDifficulty questions createdAt')
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, quizzes });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ message: error.message });
+    }
+};
+
 // @desc    Fetch quiz for student (Adaptive / Shuffled)
 // @route   GET /api/quiz/:id/attempt
 // @access  Student
@@ -89,6 +149,7 @@ export const getQuizForStudent = async (req, res) => {
     try {
         const quiz = await Quiz.findById(req.params.id);
         if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+        ensureStudentHasQuizAccess(quiz, req.user);
 
         // Fisher-Yates (Knuth) Shuffle for questions
         const shuffledQuestions = [...quiz.questions];
@@ -150,27 +211,40 @@ export const submitQuiz = async (req, res) => {
             return res.status(404).json({ message: 'Quiz not found' });
         }
 
+        ensureStudentHasQuizAccess(quiz, req.user);
+
         let totalScore = 0;
-        let maxScore = 0;
+        const maxScore = quiz.questions.reduce((sum, q) => sum + normalizeQuestionWeight(q.weight), 0);
         let weakNodes = [];
         const questionMetrics = [];
 
-        answers.forEach(ans => {
+        const dedupedAnswers = new Map();
+        answers.forEach((ans) => {
+            if (ans?.questionId) {
+                dedupedAnswers.set(String(ans.questionId), ans);
+            }
+        });
+
+        dedupedAnswers.forEach(ans => {
             const q = quiz.questions.id(ans.questionId);
             if (q) {
-                maxScore += q.weight;
+                const questionWeight = normalizeQuestionWeight(q.weight);
+                const selectedOptionText = typeof ans.selectedOptionText === 'string' ? ans.selectedOptionText : '';
+                const timeSpent = Number.isFinite(Number(ans.timeSpent)) ? Math.max(0, Number(ans.timeSpent)) : 0;
+
                 // Verify answer
-                const isCorrect = q.options[q.correctOptionIndex] === ans.selectedOptionText;
+                const isCorrect = q.options[q.correctOptionIndex] === selectedOptionText;
                 if (isCorrect) {
-                    totalScore += q.weight;
-                } else {
+                    totalScore += questionWeight;
+                } else if (q.topicTag) {
                     weakNodes.push(q.topicTag);
                 }
 
                 questionMetrics.push({
                     questionId: q._id,
+                    selectedOptionText,
                     isCorrect,
-                    timeSpent: ans.timeSpent
+                    timeSpent,
                 });
             }
         });
@@ -271,21 +345,31 @@ export const getQuizReview = async (req, res) => {
             return res.status(404).json({ message: 'Quiz not found' });
         }
 
+        ensureStudentHasQuizAccess(quiz, req.user);
+
         // Build review structure with student answers
         const reviewQuestions = quiz.questions.map((q, idx) => {
             const metric = quizResult.questionMetrics.find(
                 m => m.questionId.toString() === q._id.toString()
             );
 
+            let studentSelectedIndex = -1;
+            if (typeof metric?.selectedOptionText === 'string') {
+                const resolvedIndex = q.options.indexOf(metric.selectedOptionText);
+                if (resolvedIndex >= 0) {
+                    studentSelectedIndex = resolvedIndex;
+                }
+            } else if (metric?.isCorrect) {
+                // Backward compatibility with older results that did not store selectedOptionText
+                studentSelectedIndex = q.correctOptionIndex;
+            }
+
             return {
                 position: idx + 1,
                 questionText: q.questionText,
                 options: q.options,
                 correctOptionIndex: q.correctOptionIndex,
-                studentSelectedIndex: q.options.indexOf(
-                    // Find which option the student selected based on metrics
-                    metric ? q.options[q.correctOptionIndex] : null
-                ),
+                studentSelectedIndex,
                 isCorrect: metric?.isCorrect || false,
                 explanation: q.explanation || 'No explanation available',
                 topicTag: q.topicTag,
@@ -346,31 +430,44 @@ export const forceSubmitQuiz = async (req, res) => {
             return res.status(404).json({ message: 'Quiz not found' });
         }
 
+        ensureStudentHasQuizAccess(quiz, req.user);
+
         // Calculate score from saved answers (or zero if none)
         let totalScore = 0;
         let maxScore = 0;
         let weakNodes = [];
         const questionMetrics = [];
 
-        const answerMap = answers ? answers.reduce((acc, a) => {
-            acc[a.questionId] = a;
-            return acc;
-        }, {}) : {};
+        const answerMap = new Map();
+        if (Array.isArray(answers)) {
+            answers.forEach((answer) => {
+                if (answer?.questionId) {
+                    answerMap.set(String(answer.questionId), answer);
+                }
+            });
+        }
 
         quiz.questions.forEach(q => {
-            maxScore += q.weight;
-            const ans = answerMap[q._id];
+            const questionWeight = normalizeQuestionWeight(q.weight);
+            maxScore += questionWeight;
+
+            const ans = answerMap.get(String(q._id));
             if (ans) {
-                const isCorrect = q.options[q.correctOptionIndex] === ans.selectedOptionText;
+                const selectedOptionText = typeof ans.selectedOptionText === 'string' ? ans.selectedOptionText : '';
+                const timeSpent = Number.isFinite(Number(ans.timeSpent)) ? Math.max(0, Number(ans.timeSpent)) : 0;
+                const isCorrect = q.options[q.correctOptionIndex] === selectedOptionText;
+
                 if (isCorrect) {
-                    totalScore += q.weight;
-                } else {
+                    totalScore += questionWeight;
+                } else if (q.topicTag) {
                     weakNodes.push(q.topicTag);
                 }
+
                 questionMetrics.push({
                     questionId: q._id,
+                    selectedOptionText,
                     isCorrect,
-                    timeSpent: ans.timeSpent || 0,
+                    timeSpent,
                 });
             }
         });
