@@ -1,6 +1,14 @@
 import express from 'express';
 import multer from 'multer';
-import { generateQuiz, getQuizForStudent, submitQuiz, deleteQuiz, getQuizReview, forceSubmitQuiz } from '../controllers/quizController.js';
+import {
+  generateQuiz,
+  getQuizzesBySection,
+  getQuizForStudent,
+  submitQuiz,
+  deleteQuiz,
+  getQuizReview,
+  forceSubmitQuiz,
+} from '../controllers/quizController.js';
 import {
   reportViolation,
   getIntegrityEvents,
@@ -19,6 +27,7 @@ const upload = multer({
 // Teacher only
 router.post('/generate', protect, roleGuard('TEACHER', 'ADMIN'), upload.single('document'), generateQuiz);
 router.delete('/:id', protect, roleGuard('TEACHER', 'ADMIN'), deleteQuiz);
+router.get('/section/:contextId', protect, roleGuard('TEACHER', 'ADMIN'), getQuizzesBySection);
 
 // Integrity config (all authenticated)
 router.get('/integrity/config', protect, getIntegrityConfig);

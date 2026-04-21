@@ -18,6 +18,7 @@ const QuizResultSchema = new mongoose.Schema({
     questionMetrics: [
         {
             questionId: mongoose.Schema.Types.ObjectId,
+            selectedOptionText: String,
             isCorrect: Boolean,
             timeSpent: Number,
         }
