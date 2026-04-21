@@ -88,7 +88,6 @@ describe('adaptiveRecommendationService', () => {
       const aiResponse = {
         priorityTopics: ['DP'],
         studyPlan: ['Review basics', 'Practice problems'],
-        youtubeSearchTerms: ['dynamic programming tutorial'],
         motivationalNote: 'Keep going!',
       };
 
@@ -99,7 +98,6 @@ describe('adaptiveRecommendationService', () => {
 
       expect(result.priorityTopics).toEqual(['DP']);
       expect(result.studyPlan).toHaveLength(2);
-      expect(result.youtubeSearchTerms).toHaveLength(1);
       expect(result.motivationalNote).toBe('Keep going!');
       expect(result.metadata).toBeDefined();
     });
@@ -125,7 +123,6 @@ describe('adaptiveRecommendationService', () => {
       const aiResponse = {
         priorityTopics: [],
         studyPlan: ['Explore new topics'],
-        youtubeSearchTerms: [],
         motivationalNote: 'Great start!',
       };
 

@@ -74,7 +74,6 @@ describe('featureExtractor', () => {
         student: {
           _id: 's1',
           aiDoubtUsageCount: 5,
-          youtubeSummaryCount: 3,
           revisionPlanCount: 2,
           materialViewCount: 10,
           weakTopics: [
@@ -83,7 +82,6 @@ describe('featureExtractor', () => {
           ],
           integrityScore: 85,
           loginCount: 20,
-          youtubeQuizAttempts: 8,
         },
         quizResults: [
           { accuracyPercentage: 70, timeTakenSeconds: 300 },
@@ -114,13 +112,11 @@ describe('featureExtractor', () => {
         student: {
           _id: 's2',
           aiDoubtUsageCount: 0,
-          youtubeSummaryCount: 0,
           revisionPlanCount: 0,
           materialViewCount: 0,
           weakTopics: [],
           integrityScore: 100,
           loginCount: 1,
-          youtubeQuizAttempts: 0,
         },
         quizResults: [],
         totalExams: 0,
@@ -143,7 +139,6 @@ describe('featureExtractor', () => {
         student: {
           _id: 's3',
           aiDoubtUsageCount: 0,
-          youtubeSummaryCount: 0,
           revisionPlanCount: 0,
           materialViewCount: 0,
           weakTopics: [
@@ -153,7 +148,6 @@ describe('featureExtractor', () => {
           ],
           integrityScore: 30,
           loginCount: 2,
-          youtubeQuizAttempts: 0,
         },
         quizResults: [
           { accuracyPercentage: 20, timeTakenSeconds: 100 },
@@ -181,13 +175,11 @@ describe('featureExtractor', () => {
         student: {
           _id: 's4',
           aiDoubtUsageCount: 10,
-          youtubeSummaryCount: 5,
           revisionPlanCount: 3,
           materialViewCount: 20,
           weakTopics: [],
           integrityScore: 98,
           loginCount: 50,
-          youtubeQuizAttempts: 15,
         },
         quizResults: [
           { accuracyPercentage: 95, timeTakenSeconds: 300 },
@@ -235,7 +227,7 @@ describe('featureExtractor', () => {
   describe('FEATURE_COUNT', () => {
     it('should match the number of FEATURE_NAMES', () => {
       expect(FEATURE_COUNT).toBe(FEATURE_NAMES.length);
-      expect(FEATURE_COUNT).toBe(12);
+      expect(FEATURE_COUNT).toBe(11);
     });
   });
 });

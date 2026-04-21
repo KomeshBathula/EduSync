@@ -46,10 +46,8 @@ const UserSchema = new mongoose.Schema({
     lastLoginAt: { type: Date },
     totalTimeSpentMinutes: { type: Number, default: 0 },
     materialViewCount: { type: Number, default: 0 },
-    youtubeQuizAttempts: { type: Number, default: 0 },
     aiDoubtUsageCount: { type: Number, default: 0 },
     revisionPlanCount: { type: Number, default: 0 },
-    youtubeSummaryCount: { type: Number, default: 0 },
 
     // ─── Integrity / Behavioral Fields ──────────────────────────
     integrityScore: { type: Number, default: 100, min: 0, max: 100 },

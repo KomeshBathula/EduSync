@@ -70,9 +70,9 @@ describe('trainModel', () => {
       expect(labels).toContain(1); // MEDIUM
       expect(labels).toContain(2); // HIGH
 
-      // Each feature vector should have 12 elements
+      // Each feature vector should have 11 elements
       features.forEach(v => {
-        expect(v).toHaveLength(12);
+        expect(v).toHaveLength(11);
         v.forEach(val => {
           expect(val).toBeGreaterThanOrEqual(0);
           expect(val).toBeLessThanOrEqual(1);

@@ -1,16 +1,9 @@
 import express from 'express';
-import { summarizeYoutube, doubtSolverChat, generateSmartRevision, getSupportedLanguages, youtubeQuiz, getChatHistory, sendChatMessage, clearChatHistory } from '../controllers/aiController.js';
+import { doubtSolverChat, generateSmartRevision, getSupportedLanguages, getChatHistory, sendChatMessage, clearChatHistory } from '../controllers/aiController.js';
 import { protect, roleGuard } from '../middleware/authMiddleware.js';
-import { youtubeRateLimiter, doubtRateLimiter, revisionRateLimiter } from '../middleware/aiRateLimiter.js';
+import { doubtRateLimiter, revisionRateLimiter } from '../middleware/aiRateLimiter.js';
 
 const router = express.Router();
-
-// YouTube AI Summarizer
-router.post('/youtube-summary', protect, roleGuard('STUDENT'), youtubeRateLimiter, summarizeYoutube);
-// YouTube Post-Reading Quiz
-router.post('/youtube-quiz', protect, roleGuard('STUDENT'), youtubeRateLimiter, youtubeQuiz);
-// Backward compatibility
-router.post('/youtube', protect, roleGuard('STUDENT', 'TEACHER', 'ADMIN'), youtubeRateLimiter, summarizeYoutube);
 
 // AI Doubt Solver
 router.post('/doubt', protect, roleGuard('STUDENT'), doubtRateLimiter, doubtSolverChat);

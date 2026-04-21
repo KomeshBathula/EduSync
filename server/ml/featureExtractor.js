@@ -5,7 +5,7 @@ import IntegrityEvent from '../models/IntegrityEvent.js';
 /**
  * Feature count expected by the ML model.
  */
-export const FEATURE_COUNT = 12;
+export const FEATURE_COUNT = 11;
 
 /**
  * Feature names in order, matching the model input vector.
@@ -19,7 +19,6 @@ export const FEATURE_NAMES = [
   'violationRate',
   'loginFrequency',
   'materialEngagement',
-  'youtubeQuizPerformance',
   'aiUsageIntensity',
   'trendSlope',
   'timeConsistency',
@@ -100,7 +99,6 @@ export const extractFeatures = async (studentId) => {
 
   // 3. Engagement score (0-100)
   const totalInteractions = (student.aiDoubtUsageCount || 0) +
-    (student.youtubeSummaryCount || 0) +
     (student.revisionPlanCount || 0) +
     (student.materialViewCount || 0);
   const engagementRaw = Math.min(totalInteractions * 10, 100);
@@ -120,17 +118,14 @@ export const extractFeatures = async (studentId) => {
   // 8. Material engagement
   const materialEngagement = student.materialViewCount || 0;
 
-  // 9. YouTube quiz performance (attempts normalized)
-  const youtubeQuizPerformance = student.youtubeQuizAttempts || 0;
-
-  // 10. AI usage intensity (doubt solver usage)
+  // 9. AI usage intensity (doubt solver usage)
   const aiUsageIntensity = student.aiDoubtUsageCount || 0;
 
-  // 11. Trend slope (improvement trend from accuracies, oldest to newest)
+  // 10. Trend slope (improvement trend from accuracies, oldest to newest)
   const accuracies = recentResults.map(r => r.accuracyPercentage).reverse();
   const trendSlope = calculateTrendSlope(accuracies);
 
-  // 12. Time consistency (variance in time spent on quizzes)
+  // 11. Time consistency (variance in time spent on quizzes)
   let timeConsistency = 1; // high consistency by default
   if (recentResults.length >= 2) {
     const times = recentResults.map(r => r.timeTakenSeconds);
@@ -151,7 +146,6 @@ export const extractFeatures = async (studentId) => {
     violationRate: normalize(violationRate, 0, 10),
     loginFrequency: normalize(loginFrequency, 0, 100),
     materialEngagement: normalize(materialEngagement, 0, 50),
-    youtubeQuizPerformance: normalize(youtubeQuizPerformance, 0, 30),
     aiUsageIntensity: normalize(aiUsageIntensity, 0, 30),
     trendSlope,
     timeConsistency,

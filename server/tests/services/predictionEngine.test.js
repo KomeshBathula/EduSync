@@ -43,7 +43,6 @@ describe('predictionEngine (Hybrid)', () => {
     _id: 'stu1',
     overallRiskLevel: 'LOW',
     aiDoubtUsageCount: 0,
-    youtubeSummaryCount: 0,
     revisionPlanCount: 0,
     materialViewCount: 0,
     weakTopics: [],

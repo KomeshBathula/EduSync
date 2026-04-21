@@ -24,11 +24,11 @@ describe('mlTrackingService', () => {
     it('should call $inc on the correct field with default amount of 1', async () => {
       mockFindByIdAndUpdate.mockResolvedValue({});
 
-      await incrementUserMetric('user1', 'youtubeQuizAttempts');
+      await incrementUserMetric('user1', 'aiDoubtUsageCount');
 
       expect(mockFindByIdAndUpdate).toHaveBeenCalledWith(
         'user1',
-        { $inc: { youtubeQuizAttempts: 1 } },
+        { $inc: { aiDoubtUsageCount: 1 } },
       );
     });
 

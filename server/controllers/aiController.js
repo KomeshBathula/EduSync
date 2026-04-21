@@ -1,79 +1,8 @@
-import { summarizeYoutubeVideo } from '../services/ai/youtubeSummarizerService.js';
 import { solveDoubt } from '../services/ai/doubtSolverService.js';
 import { generateRevisionPlan } from '../services/ai/smartRevisionService.js';
 import { SUPPORTED_LANGUAGES } from '../services/ai/promptTemplates.js';
-import { generateYoutubeQuiz } from '../services/ai/youtubeQuizService.js';
 import { incrementUserMetric } from '../services/mlTrackingService.js';
-
-// ─── YouTube AI Summarizer ────────────────────────────────────────
-export const summarizeYoutube = async (req, res) => {
-  try {
-    const { url, language, noteSize } = req.body;
-    const userId = req.user?._id?.toString() || 'unknown';
-
-    const result = await summarizeYoutubeVideo({ url, language, userId, noteSize });
-
-    // ML tracking (fire-and-forget)
-    incrementUserMetric(req.user?._id, 'youtubeSummaryCount');
-
-    res.json(result);
-  } catch (error) {
-    const status = error.statusCode || 500;
-    const message = status < 500
-      ? error.message
-      : 'An error occurred while processing the video. Please try again.';
-    res.status(status).json({ error: message });
-  }
-};
-
-// ─── YouTube Post-Reading Quiz ────────────────────────────────────
-export const youtubeQuiz = async (req, res) => {
-  try {
-    const { summaryContent, questionCount, difficulty } = req.body;
-    const userId = req.user?._id?.toString() || 'unknown';
-
-    // Validate summary content (check for empty or whitespace-only strings)
-    if (!summaryContent || typeof summaryContent !== 'string' || summaryContent.trim().length === 0) {
-      return res.status(400).json({ 
-        error: 'Summary content is required to generate a quiz. Please summarize a video first.',
-        debug: { received: typeof summaryContent, length: summaryContent?.length || 0 }
-      });
-    }
-
-    if (summaryContent.trim().length < 50) {
-      return res.status(400).json({ 
-        error: 'Summary content is too short. Please use a longer video or detailed notes.',
-        debug: { length: summaryContent.trim().length }
-      });
-    }
-
-    if (!questionCount || ![5, 10, 15].includes(questionCount)) {
-      return res.status(400).json({ error: 'Question count must be 5, 10, or 15.' });
-    }
-
-    if (!difficulty || !['EASY', 'MEDIUM', 'HARD'].includes(difficulty)) {
-      return res.status(400).json({ error: 'Difficulty must be EASY, MEDIUM, or HARD.' });
-    }
-
-    const result = await generateYoutubeQuiz({ 
-      summaryContent, 
-      questionCount, 
-      difficulty,
-      userId 
-    });
-
-    // ML tracking
-    incrementUserMetric(req.user?._id, 'youtubeQuizAttempts');
-
-    res.json(result);
-  } catch (error) {
-    const status = error.statusCode || 500;
-    const message = status < 500
-      ? error.message
-      : 'An error occurred while generating the quiz. Please try again.';
-    res.status(status).json({ error: message });
-  }
-};
+import AIChatMessage from '../models/AIChatMessage.js';
 
 // ─── AI Doubt Solver ──────────────────────────────────────────────
 export const doubtSolverChat = async (req, res) => {
@@ -123,8 +52,6 @@ export const getSupportedLanguages = (req, res) => {
 };
 
 // ─── Chat History & Memory Management ─────────────────────────────
-
-import AIChatMessage from '../models/AIChatMessage.js';
 
 // GET /api/ai/chat/history - Fetch conversation history
 export const getChatHistory = async (req, res) => {

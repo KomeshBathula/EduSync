@@ -347,16 +347,6 @@ const StudentDashboard = () => {
                                 </div>
                             </button>
 
-                            <button onClick={() => navigate('/student/youtube')} className="w-full text-left group p-5 bg-surface border border-border-base hover:border-danger rounded-[var(--radius-lg)] transition-all shadow-sm hover:shadow-level1 flex items-center gap-4 min-h-[72px]">
-                                <div className="w-12 h-12 rounded-xl bg-danger/10 text-danger flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <Video className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h4 className="text-base font-bold text-text-primary">YouTube AI</h4>
-                                    <p className="text-sm text-text-secondary mt-0.5">Summarize & Test Videos</p>
-                                </div>
-                            </button>
-
                             <button onClick={() => navigate('/student/smart-revision')} className="w-full text-left group p-5 bg-surface border border-border-base hover:border-accent rounded-[var(--radius-lg)] transition-all shadow-sm hover:shadow-level1 flex items-center gap-4 min-h-[72px]">
                                 <div className="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center group-hover:scale-110 transition-transform">
                                     <Sparkles className="w-6 h-6" />

@@ -65,7 +65,7 @@ const randRange = (min, max) => min + Math.random() * (max - min);
  *
  * Feature order: avgAccuracy3, avgAccuracy5, engagementScore, weakTopicCount,
  * integrityScore, violationRate, loginFrequency, materialEngagement,
- * youtubeQuizPerformance, aiUsageIntensity, trendSlope, timeConsistency
+ * aiUsageIntensity, trendSlope, timeConsistency
  *
  * @param {number} samplesPerClass - Number of synthetic samples per risk class
  * @returns {{features: number[][], labels: number[]}}
@@ -86,7 +86,6 @@ export const generateSyntheticData = (samplesPerClass = 40) => {
       violationRate:          [0.02, 0.03],
       loginFrequency:         [0.70, 0.15],
       materialEngagement:     [0.65, 0.20],
-      youtubeQuizPerformance: [0.60, 0.20],
       aiUsageIntensity:       [0.50, 0.20],
       trendSlope:             [0.65, 0.10],
       timeConsistency:        [0.80, 0.12],
@@ -101,7 +100,6 @@ export const generateSyntheticData = (samplesPerClass = 40) => {
       violationRate:          [0.15, 0.10],
       loginFrequency:         [0.45, 0.15],
       materialEngagement:     [0.35, 0.15],
-      youtubeQuizPerformance: [0.35, 0.15],
       aiUsageIntensity:       [0.30, 0.15],
       trendSlope:             [0.48, 0.10],
       timeConsistency:        [0.60, 0.15],
@@ -116,7 +114,6 @@ export const generateSyntheticData = (samplesPerClass = 40) => {
       violationRate:          [0.45, 0.20],
       loginFrequency:         [0.20, 0.12],
       materialEngagement:     [0.10, 0.10],
-      youtubeQuizPerformance: [0.12, 0.10],
       aiUsageIntensity:       [0.10, 0.10],
       trendSlope:             [0.30, 0.12],
       timeConsistency:        [0.35, 0.18],

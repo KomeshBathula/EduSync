@@ -28,7 +28,6 @@ export const evaluateRiskRuleBased = (student, recentResults) => {
 
     // 2. Engagement
     const totalInteractions = (student.aiDoubtUsageCount || 0) +
-        (student.youtubeSummaryCount || 0) +
         (student.revisionPlanCount || 0) +
         (student.materialViewCount || 0);
     const engagementScore = Math.min(totalInteractions * 10, 100);

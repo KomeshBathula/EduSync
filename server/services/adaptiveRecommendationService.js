@@ -9,7 +9,6 @@ import { predictRisk } from '../ml/inferenceService.js';
 const FALLBACK_RESPONSE = {
   priorityTopics: [],
   studyPlan: [],
-  youtubeSearchTerms: [],
   motivationalNote: 'Keep learning and practicing! Every attempt makes you stronger.',
 };
 
@@ -184,9 +183,6 @@ export const getAdaptiveRecommendations = async (userId) => {
       : [],
     studyPlan: Array.isArray(parsed.studyPlan)
       ? parsed.studyPlan.map(s => (typeof s === 'object' && s !== null ? (s.action || s.step || JSON.stringify(s)) : String(s)))
-      : [],
-    youtubeSearchTerms: Array.isArray(parsed.youtubeSearchTerms)
-      ? parsed.youtubeSearchTerms.map(t => (typeof t === 'object' && t !== null ? (t.query || t.term || JSON.stringify(t)) : String(t)))
       : [],
     motivationalNote: parsed.motivationalNote || FALLBACK_RESPONSE.motivationalNote,
     metadata: {

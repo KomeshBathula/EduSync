@@ -34,29 +34,6 @@ export const aiRateLimiter = rateLimit({
   },
 });
 
-// ─── YouTube Summarizer Rate Limiter (stricter) ──────────────────
-export const youtubeRateLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 5, // 5 YouTube summaries per 5 minutes
-  keyGenerator: userKeyGenerator,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: 'YouTube summarizer rate limit reached. Please try again in a few minutes.',
-    retryAfter: 300,
-  },
-  handler: (req, res, next, options) => {
-    console.warn(JSON.stringify({
-      level: 'warn',
-      service: 'rateLimiter',
-      event: 'youtube_rate_limit_hit',
-      userId: req.user?._id?.toString() || 'anonymous',
-      ip: req.ip,
-    }));
-    res.status(429).json(options.message);
-  },
-});
-
 // ─── Doubt Solver Rate Limiter ───────────────────────────────────
 export const doubtRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute

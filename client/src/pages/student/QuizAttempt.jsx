@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../../components/common/Card';
-import { Clock, CheckCircle, ArrowRight, BrainCircuit, Youtube, HelpCircle, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
+import { Clock, CheckCircle, ArrowRight, BrainCircuit, HelpCircle, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { createSecureExamController } from '../../utils/secureExamController';
@@ -367,19 +367,6 @@ const QuizAttempt = () => {
                                 <ul className="text-xs text-text-secondary list-disc pl-4 space-y-1">
                                     {Array.from(new Set(result.weakNodes)).map((w, i) => <li key={i}>{w}</li>)}
                                 </ul>
-                            </div>
-                            <div className="border-t border-danger/20 pt-4 mt-2">
-                                <h4 className="flex items-center gap-2 text-sm font-bold text-text-secondary mb-2">
-                                    <Youtube className="w-4 h-4 text-danger" /> Watch to overcome weakness
-                                </h4>
-                                <div className="flex flex-col gap-2">
-                                    {Array.from(new Set(result.weakNodes)).slice(0, 2).map((w, i) => (
-                                        <a key={i} href={`https://www.youtube.com/results?search_query=${encodeURIComponent("Learn " + w + " explanation")}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:text-primary-hover bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded border border-primary/20 transition-colors flex justify-between items-center">
-                                            <span className="truncate pr-2">Learn {w} on Youtube</span>
-                                            <ArrowRight className="w-3 h-3 flex-shrink-0" />
-                                        </a>
-                                    ))}
-                                </div>
                             </div>
                         </div>
                     )}

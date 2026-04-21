@@ -11,8 +11,9 @@ EduSync AI is a full-stack web application designed for colleges and universitie
 - AI-powered Risk Meter (LOW / MEDIUM / HIGH)
 - Adaptive quiz attempts with anti-cheat shuffling and countdown timer
 - Automatic weakness detection after each quiz
+- AI Doubt Solver for contextual Q&A support
+- Smart Revision planner for 7-day personalized study plans
 - Access to teacher-uploaded class notes
-- AI tools: YouTube AI Summarizer, Doubt Solver, Smart Revision Generator *(in progress)*
 
 ### 👨‍🏫 Teacher (Command Center)
 - Class analytics with Radar chart for topic mastery
@@ -47,7 +48,6 @@ EduSync AI is a full-stack web application designed for colleges and universitie
 - Node.js (v18+)
 - MongoDB (running locally or Atlas URI)
 - Groq API Key → [console.groq.com](https://console.groq.com)
-- yt-dlp (`pip3 install yt-dlp`) — for YouTube AI Summarizer
 
 ### Installation
 
@@ -266,6 +266,8 @@ EduSync/
 | Service | Description |
 |---|---|
 | `groqQuizService` | Calls Groq LLM to generate N MCQs from topic/PDF context |
+| `doubtSolverService` | Provides context-aware student doubt resolution |
+| `smartRevisionService` | Builds personalized weekly revision plans |
 | `weakAreaDetector` | Updates student's weak topics after quiz submission |
 | `predictionEngine` | Calculates risk level from quiz trends + weakness density |
 | `assignmentEvaluator` | Converts raw score to weighted marks |
@@ -290,7 +292,6 @@ All features are fully functional:
 ### 🌟 Recent Stability & Security Updates
 - **Secure Course Materials Viewer**: Course materials are now fetched securely via authenticated API blob streams and rendered in an in-app modal, eliminating popup blocker issues and preventing JWT leakage in URLs.
 - **Robust Smart Revision Generator**: Implemented a highly resilient JSON parsing and validation layer with auto-repair and safe fallback arrays, guaranteeing the UI never crashes due to malformed AI output.
-- **YouTube AI Summarizer Upgrades**: Completely removed brittle system dependencies (`yt-dlp` and `python`). Transcripts are now fetched natively via Node.js, drastically improving cloud portability and stability.
 - **Scalable Doubt Solver Memory**: Refactored the AI Chat from a single-array document anti-pattern to a highly scalable, paginated message model. Added automated cleanup to retain only the last 5000 messages per user, preventing MongoDB 16MB document limits from ever being breached.
 
 ---
