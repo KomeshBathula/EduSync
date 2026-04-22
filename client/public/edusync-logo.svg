@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EduSync logo">
+  <defs>
+    <linearGradient id="edusync-bg" x1="72" y1="72" x2="440" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E5A8A"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="edusync-page" x1="144" y1="148" x2="368" y2="372" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#E2F0FA" stop-opacity="0.94"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="32" y="32" width="448" height="448" rx="116" fill="url(#edusync-bg)"/>
+  <circle cx="256" cy="256" r="172" stroke="white" stroke-opacity="0.18" stroke-width="18"/>
+
+  <path d="M112 164C168 141 219 148 256 183V364C219 329 168 322 112 345V164Z" fill="url(#edusync-page)"/>
+  <path d="M400 164C344 141 293 148 256 183V364C293 329 344 322 400 345V164Z" fill="url(#edusync-page)"/>
+
+  <path d="M256 183V364" stroke="#0B4366" stroke-opacity="0.38" stroke-width="12" stroke-linecap="round"/>
+
+  <path d="M172 226H248" stroke="#0B4366" stroke-opacity="0.36" stroke-width="10" stroke-linecap="round"/>
+  <path d="M172 266H232" stroke="#0B4366" stroke-opacity="0.32" stroke-width="10" stroke-linecap="round"/>
+  <path d="M340 226H264" stroke="#0B4366" stroke-opacity="0.36" stroke-width="10" stroke-linecap="round"/>
+  <path d="M340 266H280" stroke="#0B4366" stroke-opacity="0.32" stroke-width="10" stroke-linecap="round"/>
+
+  <circle cx="256" cy="124" r="22" fill="#F59E0B"/>
+  <circle cx="256" cy="124" r="10" fill="#FFFFFF"/>
+</svg>

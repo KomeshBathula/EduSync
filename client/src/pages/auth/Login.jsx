@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, BookOpen, Shield, ArrowRight, Github, Linkedin, Users, X, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { GraduationCap, BookOpen, Shield, ArrowRight, Users, Sparkles } from 'lucide-react';
 import ThemeToggle from '../../components/common/ThemeToggle';
 
 
@@ -13,7 +13,12 @@ const Login = () => {
     const isAdminMode = location.pathname === '/login/admin';
 
     return (
-        <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background">
+        <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary/10 blur-[120px]"></div>
+                <div className="absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-secondary/10 blur-[140px]"></div>
+                <div className="absolute top-1/3 right-1/4 w-64 h-64 rounded-full bg-accent-base/10 blur-[110px]"></div>
+            </div>
             
             {/* Desktop Theme Toggle */}
             <div className="hidden lg:block absolute top-6 right-6 z-50">
@@ -21,17 +26,23 @@ const Login = () => {
             </div>
 
             {/* Left Side: Branding & Story (60%) */}
-            <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] bg-surface-alt flex-col justify-between p-12 xl:p-20 relative border-r border-border-subtle overflow-hidden">
+            <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] bg-surface-alt/90 backdrop-blur-sm flex-col justify-between p-12 xl:p-20 relative border-r border-border-subtle overflow-hidden">
                 {/* Decorative background grid pattern (subtle) */}
                 <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.02]" 
                      style={{ backgroundImage: 'linear-gradient(var(--color-primary-base) 1px, transparent 1px), linear-gradient(90deg, var(--color-primary-base) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-primary/10 via-transparent to-secondary-base/10" />
 
                 <div className="z-10">
-                    <div className="flex items-center gap-3 mb-16">
-                        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                            <BookOpen className="text-white w-6 h-6" />
+                    <div className="flex items-center gap-4 mb-16">
+                        <img
+                            src="/edusync-logo.svg"
+                            alt="EduSync logo"
+                            className="w-14 h-14 rounded-2xl shadow-level-2 ring-1 ring-white/50"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-heading font-bold tracking-tight text-text-primary">EduSync<span className="text-primary ml-0.5">AI</span></h1>
+                            <p className="text-xs uppercase tracking-[0.2em] text-text-secondary font-semibold mt-1">Learning Intelligence Platform</p>
                         </div>
-                        <h1 className="text-2xl font-heading font-bold tracking-tight text-text-primary">EduSync<span className="text-primary ml-0.5">AI</span></h1>
                     </div>
 
                     <div className="max-w-xl">
@@ -94,10 +105,15 @@ const Login = () => {
                 {/* Mobile Header (visible only on small screens) */}
                 <div className="lg:hidden flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                            <BookOpen className="text-white w-5 h-5" />
+                        <img
+                            src="/edusync-logo.svg"
+                            alt="EduSync logo"
+                            className="w-10 h-10 rounded-xl shadow-level-2 ring-1 ring-white/60"
+                        />
+                        <div>
+                            <h1 className="text-xl font-heading font-bold text-text-primary">EduSync<span className="text-primary ml-0.5">AI</span></h1>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-text-secondary font-semibold">Learning Intelligence</p>
                         </div>
-                        <h1 className="text-xl font-heading font-bold text-text-primary">EduSync<span className="text-primary ml-0.5">AI</span></h1>
                     </div>
                     <div className="flex items-center gap-3">
                         <ThemeToggle />
@@ -133,7 +149,7 @@ const Login = () => {
                                         <h4 className="text-base font-bold text-text-primary group-hover:text-primary transition-colors">Student Portal</h4>
                                         <p className="text-sm text-text-secondary mt-1">Access adaptive tests & AI tutors</p>
                                     </div>
-                                    <ArrowRight className="w-5 h-5 text-text-secondary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-primary" />
+                                    <ArrowRight className="w-5 h-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-primary" />
                                 </motion.div>
 
                                 {/* Faculty Portal */}
@@ -149,7 +165,7 @@ const Login = () => {
                                         <h4 className="text-base font-bold text-text-primary group-hover:text-secondary-base transition-colors">Faculty Portal</h4>
                                         <p className="text-sm text-text-secondary mt-1">Manage classes & monitor risk</p>
                                     </div>
-                                    <ArrowRight className="w-5 h-5 text-text-secondary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-secondary-base" />
+                                    <ArrowRight className="w-5 h-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-secondary-base" />
                                 </motion.div>
                             </>
                         ) : (

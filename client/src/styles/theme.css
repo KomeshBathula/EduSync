@@ -1,47 +1,47 @@
 /* client/src/styles/theme.css */
 :root {
-  /* Semantic Color System - Deep Maroon & Warm Neutrals */
+  /* Semantic Color System - Calm Blue + Teal */
 
-  /* Primary: Deep Academic Maroon */
-  --color-primary-base: #881337; /* Rose 900 */
-  --color-primary-hover: #4C0519; /* Rose 950 */
-  --color-primary-light: #E11D48; /* Rose 600 */
+  /* Primary: Trusted Academic Blue */
+  --color-primary-base: #0E5A8A;
+  --color-primary-hover: #0A4468;
+  --color-primary-light: #3B82B7;
 
-  /* Secondary: Warm Stone */
-  --color-secondary-base: #57534E; /* Stone 600 */
-  --color-secondary-hover: #44403C; /* Stone 700 */
-  --color-secondary-light: #A8A29E; /* Stone 400 */
+  /* Secondary: Teal Intelligence */
+  --color-secondary-base: #0F766E;
+  --color-secondary-hover: #0B5E58;
+  --color-secondary-light: #14B8A6;
 
-  /* Accent: Warm Gold/Yellow */
-  --color-accent-base: #D97706; /* Amber-600 */
-  --color-accent-hover: #B45309; /* Amber-700 */
-  --color-accent-light: #F59E0B; /* Amber-500 */
+  /* Accent: Warm Achievement Gold */
+  --color-accent-base: #D97706;
+  --color-accent-hover: #B45309;
+  --color-accent-light: #F59E0B;
 
-  /* Status Colors: Muted, not neon */
-  --color-success-base: #059669; /* Emerald-600 */
-  --color-success-light: #10B981; /* Emerald-500 */
+  /* Status Colors */
+  --color-success-base: #059669;
+  --color-success-light: #10B981;
 
   --color-warning-base: #D97706;
   --color-warning-light: #F59E0B;
 
-  --color-danger-base: #DC2626; /* Red-600 */
-  --color-danger-hover: #B91C1C; /* Red-700 */
-  --color-danger-light: #EF4444; /* Red-500 */
+  --color-danger-base: #DC2626;
+  --color-danger-hover: #B91C1C;
+  --color-danger-light: #EF4444;
 
-  /* Neutrals & Surfaces - Warm Stone */
-  --color-bg-base: #F5F5F4; /* Stone 100 */
-  --color-surface-base: #FFFFFF; /* Pure White */
-  --color-surface-alt: #E7E5E4; /* Stone 200 */
-  --color-surface-hover: #D6D3D1; /* Stone 300 */
+  /* Neutrals & Surfaces */
+  --color-bg-base: #F3F7FA;
+  --color-surface-base: #FFFFFF;
+  --color-surface-alt: #E8F0F6;
+  --color-surface-hover: #D9E5EF;
   
-  --color-border-subtle: #E7E5E4;
-  --color-border-base: #D6D3D1; 
-  --color-focus-ring: rgba(136, 19, 55, 0.4); /* Based on Rose 900 */
+  --color-border-subtle: #E1EAF1;
+  --color-border-base: #C8D8E6;
+  --color-focus-ring: rgba(14, 90, 138, 0.35);
 
-  /* Text Colors - High Contrast, Calming */
-  --color-text-primary: #1C1917; /* Stone 900 */
-  --color-text-secondary: #57534E; /* Stone 600 */
-  --color-text-muted: #A8A29E; /* Stone 400 */
+  /* Text Colors */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748B;
   --color-text-inverse: #FFFFFF;
 
   /* Typography Base Values - Clean Hierarchy */
@@ -49,10 +49,10 @@
   --font-family-body: 'Inter', sans-serif;
   --font-family-mono: 'IBM Plex Mono', monospace;
 
-  /* Subtle, Natural Shadows - No glow */
-  --shadow-level-1: 0 1px 2px 0 rgba(28, 25, 23, 0.05);
-  --shadow-level-2: 0 4px 6px -1px rgba(28, 25, 23, 0.05), 0 2px 4px -2px rgba(28, 25, 23, 0.05);
-  --shadow-level-3: 0 10px 15px -3px rgba(28, 25, 23, 0.05), 0 4px 6px -4px rgba(28, 25, 23, 0.05);
+  /* Soft shadows */
+  --shadow-level-1: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+  --shadow-level-2: 0 8px 16px -6px rgba(15, 23, 42, 0.14), 0 2px 4px -2px rgba(15, 23, 42, 0.08);
+  --shadow-level-3: 0 18px 30px -12px rgba(15, 23, 42, 0.2), 0 8px 14px -8px rgba(15, 23, 42, 0.12);
 
   /* Border Radii - Structured, slightly soft but not bubbly */
   --radius-sm: 6px;
@@ -71,40 +71,36 @@
 
 /* Dark Theme Overrides - Deep, Rich, No Neon */
 .dark {
-  /* Maroon for dark mode - slightly lighter for contrast */
-  --color-primary-base: #E11D48; /* Rose 600 */
-  --color-primary-hover: #F43F5E; /* Rose 500 */
-  --color-primary-light: #FDA4AF; /* Rose 300 */
+  --color-primary-base: #60A5FA;
+  --color-primary-hover: #93C5FD;
+  --color-primary-light: #BFDBFE;
 
-  --color-secondary-base: #A8A29E; /* Stone 400 */
-  --color-secondary-light: #D6D3D1; /* Stone 300 */
+  --color-secondary-base: #2DD4BF;
+  --color-secondary-hover: #5EEAD4;
+  --color-secondary-light: #99F6E4;
 
   --color-accent-base: #F59E0B;
   --color-accent-light: #FCD34D;
 
-  /* Status Colors - Softened for dark mode */
-  --color-success-base: #10B981;
-  --color-warning-base: #F59E0B;
-  --color-danger-base: #EF4444;
-  --color-danger-hover: #DC2626;
+  --color-success-base: #34D399;
+  --color-warning-base: #FBBF24;
+  --color-danger-base: #F87171;
+  --color-danger-hover: #EF4444;
 
-  /* Deep Stone Backgrounds */
-  --color-bg-base: #0C0A09; /* Stone 950 */
-  --color-surface-base: #1C1917; /* Stone 900 */
-  --color-surface-alt: #292524; /* Stone 800 */
-  --color-surface-hover: #44403C; /* Stone 700 */
+  --color-bg-base: #020617;
+  --color-surface-base: #0B1220;
+  --color-surface-alt: #111C2F;
+  --color-surface-hover: #1A2A43;
 
-  --color-border-subtle: #292524; /* Stone 800 */
-  --color-border-base: #44403C; /* Stone 700 */
+  --color-border-subtle: #1E293B;
+  --color-border-base: #334155;
 
-  /* Shadow logic for dark mode - pure opacity based */
-  --shadow-level-1: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-level-2: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  --shadow-level-3: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+  --shadow-level-1: 0 4px 8px -3px rgba(2, 6, 23, 0.55);
+  --shadow-level-2: 0 14px 24px -10px rgba(2, 6, 23, 0.62);
+  --shadow-level-3: 0 28px 40px -16px rgba(2, 6, 23, 0.72);
 
-  /* Text Colors for Dark Mode */
-  --color-text-primary: #FAFAF9; /* Stone 50 */
-  --color-text-secondary: #D6D3D1; /* Stone 300 */
-  --color-text-muted: #78716C; /* Stone 500 */
-  --color-text-inverse: #0C0A09;
+  --color-text-primary: #E2E8F0;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+  --color-text-inverse: #020617;
 }
