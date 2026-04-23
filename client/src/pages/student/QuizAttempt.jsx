@@ -49,31 +49,30 @@ const QuizAttempt = () => {
     const reportViolationToServer = useCallback(async (eventType, metadata = {}) => {
         try {
             const res = await api.post(`/api/quiz/${id}/violation`, { eventType, metadata });
-            const data = res.data;
+            // Consume standardized {success, data} shape
+            const data = res.data?.data ?? res.data;
 
-            setViolationCount(data.violationCount);
+            setViolationCount(data?.violationCount ?? 0);
 
-            if (data.warning === 'AUTO_SUBMIT') {
-                // Server forced submission
+            if (data?.warning === 'AUTO_SUBMIT') {
                 setForcedSubmit(true);
                 controllerRef.current?.deactivate();
                 setResult({
                     score: data.forcedResult?.marksAssigned ?? 0,
-                    max: quizDataRef.current?.questions?.length || 0,
+                    max: quizDataRef.current?.questions?.length ?? 0,
                     accuracy: data.forcedResult?.accuracyPercentage ?? 0,
                     weakNodes: [],
                     timeTaken: 0,
                     forced: true,
                 });
-            } else if (data.warning === 'STRONG_WARNING') {
+            } else if (data?.warning === 'STRONG_WARNING') {
                 setWarningType('STRONG_WARNING');
-                setWarningMessage(`Violation ${data.violationCount}/${data.threshold}: One more violation will auto-submit your quiz with zero marks.`);
-            } else if (data.warning === 'WARNING') {
-                showToast(`⚠️ Warning: ${formatViolationType(eventType)} detected. ${data.threshold - data.violationCount} violations remaining before auto-submit.`);
+                setWarningMessage(`Violation ${data.violationCount ?? 0}/${data.threshold ?? 3}: One more violation will auto-submit your quiz with zero marks.`);
+            } else if (data?.warning === 'WARNING') {
+                showToast(`⚠️ Warning: ${formatViolationType(eventType)} detected. ${(data.threshold ?? 3) - (data.violationCount ?? 0)} violations remaining before auto-submit.`);
             }
         } catch (err) {
             if (err.response?.status === 409) {
-                // Already force-submitted
                 setForcedSubmit(true);
                 controllerRef.current?.deactivate();
                 setResult({ score: 0, max: 0, accuracy: 0, weakNodes: [], timeTaken: 0, forced: true });
@@ -141,20 +140,29 @@ const QuizAttempt = () => {
     useEffect(() => {
         const init = async () => {
             try {
-                // Fetch violation threshold from server
+                // 1. Fetch violation threshold config
                 const configRes = await api.get('/api/quiz/integrity/config');
-                const threshold = configRes.data.violationThreshold || 3;
-                const isStrictMode = configRes.data.strictMode || false;
+                const configData = configRes.data?.data ?? configRes.data;
+                const threshold = configData?.violationThreshold ?? 3;
+                const isStrictMode = configData?.strictMode ?? false;
                 setViolationThreshold(threshold);
                 setStrictMode(isStrictMode);
 
-                // Fetch quiz
+                // 2. Register attempt on server — blocks SUBMITTED students immediately
+                await api.post(`/api/quiz/${id}/start`);
+
+                // 3. Fetch shuffled quiz questions
                 const res = await api.get(`/api/quiz/${id}/attempt`);
-                setQuizData(res.data);
-                const totalTime = res.data.questions ? res.data.questions.length * 120 : 15 * 60;
+                const quizPayload = res.data?.data ?? res.data;
+                if (!quizPayload || !Array.isArray(quizPayload.questions)) {
+                    throw new Error('Invalid quiz data received from server');
+                }
+                setQuizData(quizPayload);
+                // Use server-provided remainingSeconds (handles resume accurately)
+                const totalTime = quizPayload.remainingSeconds ?? (quizPayload.questions.length * 120);
                 setTimeLeft(totalTime);
 
-                // Initialize secure exam controller
+                // 4. Initialize secure exam controller
                 const controller = createSecureExamController({
                     threshold,
                     strictMode: isStrictMode,
@@ -170,6 +178,10 @@ const QuizAttempt = () => {
                 setSecureReady(true);
             } catch (error) {
                 console.error(error);
+                // If already submitted (409) show message then redirect
+                if (error.response?.status === 409) {
+                    alert(error.response?.data?.message ?? 'You have already submitted this quiz.');
+                }
                 navigate('/student/dashboard');
             } finally {
                 setLoading(false);
@@ -237,26 +249,26 @@ const QuizAttempt = () => {
         setSubmitting(true);
         controllerRef.current?.deactivate();
         try {
-            const totalTimeRaw = quizData.questions ? quizData.questions.length * 120 : 15 * 60;
+            const totalTimeRaw = quizData?.questions ? quizData.questions.length * 120 : 15 * 60;
             const res = await api.post(`/api/quiz/${id}/submit`, {
                 timeTakenSeconds: totalTimeRaw - timeLeft,
                 answers: finalAnswers,
             });
-            const evalData = res.data;
+            // Consume standardized {success, data} shape
+            const evalData = res.data?.data ?? res.data;
             setResult({
-                score: evalData.marksAssigned,
-                max: quizData.questions.length,
-                accuracy: evalData.accuracyPercentage,
-                weakNodes: evalData.weakNodesDetected || [],
+                score: evalData?.marksAssigned ?? 0,
+                max: quizData?.questions?.length ?? 0,
+                accuracy: evalData?.accuracyPercentage ?? 0,
+                weakNodes: evalData?.weakNodesDetected ?? [],
                 timeTaken: totalTimeRaw - timeLeft,
             });
         } catch (error) {
             if (error.response?.status === 409) {
-                // Force-submitted
-                setResult({ score: 0, max: quizData.questions.length, accuracy: 0, weakNodes: [], timeTaken: 0, forced: true });
+                setResult({ score: 0, max: quizData?.questions?.length ?? 0, accuracy: 0, weakNodes: [], timeTaken: 0, forced: true });
             } else {
                 console.error(error);
-                alert('Error submitting quiz.');
+                alert(error.response?.data?.message ?? 'Error submitting quiz.');
             }
         } finally {
             setSubmitting(false);

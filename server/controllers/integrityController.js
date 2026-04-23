@@ -4,10 +4,10 @@ import {
   getQuizIntegritySummary,
   updateBehaviorProfile,
   checkSessionLocked,
-  cleanupExamSession,
 } from '../services/integrityService.js';
 import { getViolationThreshold } from '../services/examSessionManager.js';
 import { VIOLATION_TYPES } from '../models/IntegrityEvent.js';
+import { sendSuccess, sendError, sendCatchError } from '../utils/apiResponse.js';
 
 /**
  * @desc    Report a violation during a quiz
@@ -21,36 +21,44 @@ export const reportViolation = async (req, res) => {
     const { eventType, metadata } = req.body;
 
     if (!eventType || !VIOLATION_TYPES.includes(eventType)) {
-      return res.status(400).json({
+      return sendError(res, {
+        status: 400,
         message: `Invalid eventType. Must be one of: ${VIOLATION_TYPES.join(', ')}`,
+        error: 'VALIDATION_ERROR',
       });
     }
 
-    // Check if session is already locked (quiz already force-submitted)
     if (checkSessionLocked(quizId, studentId)) {
-      return res.status(409).json({
+      return sendError(res, {
+        status: 409,
         message: 'Quiz already force-submitted due to violations.',
-        locked: true,
-        thresholdReached: true,
+        error: 'SESSION_LOCKED',
       });
     }
 
     const result = await handleViolation(studentId, quizId, eventType, metadata || {});
 
-    // If threshold reached, also update behavioral profile
     if (result.thresholdReached) {
-      updateBehaviorProfile(studentId, quizId).catch(err =>
+      updateBehaviorProfile(studentId, quizId).catch((err) =>
         console.error('Behavior profile update failed:', err.message)
       );
     }
 
-    res.status(201).json(result);
+    return sendSuccess(res, {
+      status: 201,
+      message: 'Violation recorded',
+      data: {
+        violationCount: result.violationCount ?? 0,
+        threshold: result.threshold ?? 3,
+        thresholdReached: result.thresholdReached ?? false,
+        warning: result.warning ?? null,
+        locked: result.locked ?? false,
+        forcedResult: result.forcedResult ?? null,
+      },
+    });
   } catch (error) {
-    console.error(JSON.stringify({
-      level: 'error', service: 'integrityController',
-      event: 'report_violation_failed', error: error.message,
-    }));
-    res.status(error.statusCode || 500).json({ message: error.message });
+    console.error(JSON.stringify({ level: 'error', service: 'integrityController', event: 'report_violation_failed', error: error.message }));
+    return sendCatchError(res, error, 'Failed to record violation');
   }
 };
 
@@ -62,39 +70,39 @@ export const reportViolation = async (req, res) => {
 export const getIntegrityEvents = async (req, res) => {
   try {
     const events = await getQuizIntegrityEvents(req.params.id);
-    res.json(events);
+    return sendSuccess(res, { message: 'Integrity events fetched', data: { events: events ?? [] } });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    return sendCatchError(res, error, 'Failed to fetch integrity events');
   }
 };
 
 /**
- * @desc    Get integrity summary for a quiz (aggregated per student)
+ * @desc    Get integrity summary per student for a quiz
  * @route   GET /api/quiz/:id/integrity/summary
  * @access  TEACHER, ADMIN
  */
 export const getIntegritySummary = async (req, res) => {
   try {
     const summary = await getQuizIntegritySummary(req.params.id);
-    res.json(summary);
+    return sendSuccess(res, { message: 'Integrity summary fetched', data: { summary: summary ?? [] } });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    return sendCatchError(res, error, 'Failed to fetch integrity summary');
   }
 };
 
 /**
  * @desc    Get violation threshold configuration
  * @route   GET /api/quiz/integrity/config
- * @access  STUDENT, TEACHER, ADMIN
+ * @access  All authenticated
  */
 export const getIntegrityConfig = async (req, res) => {
   try {
     const strictMode = process.env.STRICT_EXAM_MODE === 'true';
-    res.json({
-      violationThreshold: getViolationThreshold(),
-      strictMode,
+    return sendSuccess(res, {
+      message: 'Integrity config fetched',
+      data: { violationThreshold: getViolationThreshold(), strictMode },
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    return sendCatchError(res, error, 'Failed to fetch integrity config');
   }
 };

@@ -19,8 +19,17 @@ EduSync AI is a full-stack web application designed for colleges and universitie
 - Class analytics with Radar chart for topic mastery
 - High-risk student identification
 - **Groq AI Quiz Generator** — generate MCQs from a topic or uploaded PDF/DOC
+- **Draft-to-Publish Workflow** — full control to edit/delete questions before publishing
+- **Advanced Class Analytics** — pass rate, fail count (including absentees), and distribution buckets
 - Upload class notes (PDFs, images) to specific sections
 - Manage quizzes and materials
+
+### 🛡️ Exam Integrity & Security
+- **Strict Server-Side Time Enforcement** — prevents delayed submission exploits
+- **Ghost Attempt Sweeper** — auto-expires dropped network attempts
+- **Payload Validation** — strict backend checking against partial answer hacks
+- **Submission Guard** — MongoDB compound indexes block duplicate submissions
+- **Lock-on-Attempt** — locks DRAFT edits once an attempt starts
 
 ### 🛡️ Admin
 - Academic Hierarchy management (Year / Branch / Section)

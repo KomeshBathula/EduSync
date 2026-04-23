@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Clock, TrendingUp, BookOpen } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Clock, TrendingUp, BookOpen, Award } from 'lucide-react';
 import api from '../../api/axios';
 import Card from '../../components/common/Card';
 
@@ -16,7 +16,9 @@ const QuizReview = () => {
       try {
         setLoading(true);
         const res = await api.get(`/api/quiz/${quizId}/review`);
-        setReview(res.data);
+        // Consume standardised {success, data} shape
+        const data = res.data?.data ?? res.data;
+        setReview(data);
         setError('');
       } catch (err) {
         console.error('Failed to load review:', err);
@@ -63,10 +65,16 @@ const QuizReview = () => {
     );
   }
 
-  const correctCount = review.questions.filter(q => q.isCorrect).length;
-  const totalQuestions = review.questions.length;
-  const timeMinutes = Math.floor(review.timeTakenSeconds / 60);
-  const timeSeconds = review.timeTakenSeconds % 60;
+  const questions = review.questions ?? [];
+  const correctCount = questions.filter(q => q.isCorrect).length;
+  const totalQuestions = questions.length;
+  const timeMinutes = Math.floor((review.timeTakenSeconds ?? 0) / 60);
+  const timeSeconds = (review.timeTakenSeconds ?? 0) % 60;
+
+  // Use server-computed score fields when available
+  const displayPercentage = review.accuracy ?? 0;
+  const displayScore = review.score ?? null;
+  const displayTotalMarks = review.totalMarks ?? null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,10 +91,10 @@ const QuizReview = () => {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl font-heading font-bold text-text-primary truncate">
-                {review.quizTitle}
+                {review.quizTitle ?? 'Quiz Review'}
               </h1>
               <p className="text-xs text-text-secondary mt-1">
-                Completed {new Date(review.attemptedAt).toLocaleDateString()}
+                Completed {review.attemptedAt ? new Date(review.attemptedAt).toLocaleDateString() : 'N/A'}
               </p>
             </div>
           </div>
@@ -96,16 +104,31 @@ const QuizReview = () => {
       {/* ═══ SUMMARY CARDS ═══ */}
       <div className="px-4 sm:px-6 md:px-8 py-6">
         <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
-          {/* Score Card */}
+
+          {/* Accuracy */}
           <Card className="p-4 text-center">
             <div className="flex justify-center mb-2">
               <TrendingUp className="w-5 h-5 text-primary" />
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-primary">{review.accuracy}%</p>
+            <p className="text-2xl sm:text-3xl font-bold text-primary">{displayPercentage}%</p>
             <p className="text-xs text-text-secondary mt-1">Accuracy</p>
           </Card>
 
-          {/* Correct Count Card */}
+          {/* Score / Marks */}
+          <Card className="p-4 text-center">
+            <div className="flex justify-center mb-2">
+              <Award className="w-5 h-5 text-warning" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-warning">
+              {displayScore !== null ? displayScore : '—'}
+              {displayTotalMarks !== null && (
+                <span className="text-sm font-normal text-text-muted">/{displayTotalMarks}</span>
+              )}
+            </p>
+            <p className="text-xs text-text-secondary mt-1">Score</p>
+          </Card>
+
+          {/* Correct */}
           <Card className="p-4 text-center">
             <div className="flex justify-center mb-2">
               <CheckCircle className="w-5 h-5 text-success" />
@@ -116,7 +139,7 @@ const QuizReview = () => {
             <p className="text-xs text-text-secondary mt-1">Correct</p>
           </Card>
 
-          {/* Time Card */}
+          {/* Time */}
           <Card className="p-4 text-center">
             <div className="flex justify-center mb-2">
               <Clock className="w-5 h-5 text-secondary" />
@@ -126,20 +149,11 @@ const QuizReview = () => {
             </p>
             <p className="text-xs text-text-secondary mt-1">Time Taken</p>
           </Card>
-
-          {/* Questions Card */}
-          <Card className="p-4 text-center">
-            <div className="flex justify-center mb-2">
-              <BookOpen className="w-5 h-5 text-accent" />
-            </div>
-            <p className="text-2xl sm:text-3xl font-bold text-accent">{totalQuestions}</p>
-            <p className="text-xs text-text-secondary mt-1">Questions</p>
-          </Card>
         </div>
 
         {/* ═══ QUESTIONS REVIEW ═══ */}
         <div className="max-w-5xl mx-auto space-y-6">
-          {review.questions.map((question, idx) => (
+          {questions.map((question, idx) => (
             <Card key={idx} className="p-4 sm:p-6 border-l-4" style={{
               borderLeftColor: question.isCorrect ? '#10b981' : '#ef4444'
             }}>
@@ -148,7 +162,7 @@ const QuizReview = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs sm:text-sm font-medium text-text-secondary bg-surface-alt px-2.5 py-1 rounded-full">
-                      Q{question.position}
+                      Q{question.position ?? idx + 1}
                     </span>
                     {question.isCorrect ? (
                       <span className="flex items-center gap-1 text-xs sm:text-sm font-medium text-success bg-success/10 px-2.5 py-1 rounded-full border border-success/20">
@@ -161,21 +175,19 @@ const QuizReview = () => {
                     )}
                   </div>
                   <h3 className="text-sm sm:text-base font-semibold text-text-primary leading-relaxed">
-                    {question.questionText}
+                    {question.questionText ?? 'N/A'}
                   </h3>
                 </div>
               </div>
 
               {/* Options */}
               <div className="space-y-2 mb-4">
-                {question.options.map((option, optIdx) => {
+                {(question.options ?? []).map((option, optIdx) => {
                   const isCorrectOption = optIdx === question.correctOptionIndex;
                   const isStudentSelected = optIdx === question.studentSelectedIndex;
 
                   let optionClass = 'bg-surface-alt text-text-primary border border-border-base';
-                  if (isCorrectOption && isStudentSelected) {
-                    optionClass = 'bg-success/10 text-success border-2 border-success';
-                  } else if (isCorrectOption) {
+                  if (isCorrectOption) {
                     optionClass = 'bg-success/10 text-success border-2 border-success';
                   } else if (isStudentSelected) {
                     optionClass = 'bg-danger/10 text-danger border-2 border-danger';
@@ -210,7 +222,7 @@ const QuizReview = () => {
                   Why is this correct?
                 </h4>
                 <p className="text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
-                  {question.explanation}
+                  {question.explanation ?? 'No explanation available'}
                 </p>
               </div>
             </Card>
@@ -218,18 +230,12 @@ const QuizReview = () => {
         </div>
 
         {/* ═══ ACTION BUTTONS ═══ */}
-        <div className="max-w-5xl mx-auto mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="max-w-5xl mx-auto mt-8 flex justify-center">
           <button
             onClick={() => navigate('/student/dashboard')}
             className="px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-medium text-sm"
           >
             Back to Dashboard
-          </button>
-          <button
-            onClick={() => navigate(`/student/quiz/${quizId}`)}
-            className="px-6 py-2.5 bg-surface-alt text-text-primary border border-border-base rounded-lg hover:bg-surface-hover transition-colors font-medium text-sm"
-          >
-            Retry Quiz
           </button>
         </div>
       </div>

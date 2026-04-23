@@ -8,6 +8,119 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { Upload, Users, ShieldAlert, Zap, LogOut, ChevronDown, X, FileText, BrainCircuit, Trash2, TrendingUp, Clock, Activity, Shield, AlertTriangle, Eye, Filter } from 'lucide-react';
 import api from '../../api/axios';
 
+// ── QuestionCard: supports inline edit + delete (DRAFT only) ─────────
+const QuestionCard = React.memo(({ q, isDraft, onDelete, onSave }) => {
+    const [editing, setEditing] = React.useState(false);
+    const [editText, setEditText] = React.useState(q.questionText ?? '');
+    const [saving, setSaving] = React.useState(false);
+
+    const handleSave = async () => {
+        if (!editText.trim()) return alert('Question text cannot be empty.');
+        setSaving(true);
+        await onSave(q.position, editText.trim());
+        setSaving(false);
+        setEditing(false);
+    };
+
+    return (
+        <div className="rounded-xl border border-border-base bg-surface-alt/30 p-5">
+            {/* Question header */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-medium text-text-muted">Q{q.position}</span>
+                        {q.topicTag && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                {q.topicTag}
+                            </span>
+                        )}
+                    </div>
+                    {editing ? (
+                        <textarea
+                            value={editText}
+                            onChange={e => setEditText(e.target.value)}
+                            rows={3}
+                            className="w-full text-sm text-text-primary bg-surface border border-primary/40 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                        />
+                    ) : (
+                        <p className="text-sm font-semibold text-text-primary leading-relaxed">{q.questionText ?? 'N/A'}</p>
+                    )}
+                </div>
+
+                {/* Edit / Delete controls (DRAFT only) */}
+                {isDraft && (
+                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                        {editing ? (
+                            <>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="text-xs px-2.5 py-1 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors font-medium disabled:opacity-50"
+                                >
+                                    {saving ? '…' : 'Save'}
+                                </button>
+                                <button
+                                    onClick={() => { setEditing(false); setEditText(q.questionText ?? ''); }}
+                                    className="text-xs px-2.5 py-1 rounded-md border border-border-base text-text-secondary hover:text-text-primary transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => setEditing(true)}
+                                title="Edit question text"
+                                className="text-xs px-2.5 py-1 rounded-md border border-border-base text-text-secondary hover:text-primary hover:border-primary/40 transition-colors"
+                            >
+                                Edit
+                            </button>
+                        )}
+                        <button
+                            onClick={() => onDelete(q.position)}
+                            title="Delete this question"
+                            className="text-xs px-2 py-1 rounded-md text-danger border border-danger/20 hover:bg-danger/10 transition-colors"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Options */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                {(q.options ?? []).map((opt, i) => {
+                    const isCorrect = i === q.correctOptionIndex;
+                    return (
+                        <div
+                            key={i}
+                            className={`flex items-center gap-2.5 p-3 rounded-lg border text-sm ${
+                                isCorrect
+                                    ? 'bg-success/10 border-success/40 text-success font-semibold'
+                                    : 'bg-surface border-border-base text-text-secondary'
+                            }`}
+                        >
+                            <span className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-xs font-bold border ${
+                                isCorrect ? 'bg-success text-white border-success' : 'border-border-subtle text-text-muted'
+                            }`}>
+                                {String.fromCharCode(65 + i)}
+                            </span>
+                            {opt}
+                            {isCorrect && <span className="ml-auto text-xs font-bold text-success">✓</span>}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Explanation */}
+            <div className="bg-primary/5 border border-primary/15 rounded-lg p-3">
+                <p className="text-xs font-semibold text-primary mb-1">Explanation</p>
+                <p className="text-xs text-text-secondary leading-relaxed">{q.explanation ?? 'No explanation provided'}</p>
+            </div>
+        </div>
+    );
+});
+QuestionCard.displayName = 'QuestionCard';
+
 const TeacherDashboard = () => {
     const navigate = useNavigate();
 
@@ -53,6 +166,10 @@ const TeacherDashboard = () => {
     // Quizzes for Integrity Monitor dropdown
     const [sectionQuizzes, setSectionQuizzes] = useState([]);
     const [sectionQuizzesLoading, setSectionQuizzesLoading] = useState(false);
+
+    // Quiz preview modal
+    const [previewQuiz, setPreviewQuiz] = useState(null);       // full quiz data
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     useEffect(() => {
         // Fetch public academic structures
@@ -121,11 +238,9 @@ const TeacherDashboard = () => {
         setSectionQuizzesLoading(true);
         api.get(`/api/quiz/section/${selectedContextId}`)
             .then((res) => {
-                if (res.data?.success && Array.isArray(res.data.quizzes)) {
-                    setSectionQuizzes(res.data.quizzes);
-                } else {
-                    setSectionQuizzes([]);
-                }
+                // Consume standardized {success, data: {quizzes}} shape
+                const quizzes = res.data?.data?.quizzes ?? res.data?.quizzes ?? [];
+                setSectionQuizzes(Array.isArray(quizzes) ? quizzes : []);
             })
             .catch((err) => {
                 console.error("Failed fetching section quizzes:", err);
@@ -176,7 +291,9 @@ const TeacherDashboard = () => {
         setIntegrityLoading(true);
         try {
             const res = await api.get(`/api/quiz/${quizId}/integrity/summary`);
-            setIntegritySummary(Array.isArray(res.data) ? res.data : []);
+            // Consume standardized {success, data: {summary}} shape
+            const summary = res.data?.data?.summary ?? res.data;
+            setIntegritySummary(Array.isArray(summary) ? summary : []);
         } catch (err) {
             console.error('Failed fetching integrity summary:', err);
             setIntegritySummary([]);
@@ -214,10 +331,98 @@ const TeacherDashboard = () => {
         try {
             await api.delete(`/api/quiz/${quizId}`);
             setAnalytics(prev => ({ ...prev, recentQuizzes: prev.recentQuizzes.filter(q => q._id !== quizId) }));
+            setSectionQuizzes(prev => prev.filter(q => q._id !== quizId));
         } catch (error) {
             console.error(error);
+            alert(error?.response?.data?.message || 'Error deleting quiz.');
         }
     };
+
+    const handlePublishQuiz = async (quizId) => {
+        try {
+            await api.post(`/api/quiz/${quizId}/publish`);
+            setAnalytics(prev => ({
+                ...prev,
+                recentQuizzes: prev.recentQuizzes.map(q => q._id === quizId ? { ...q, status: 'PUBLISHED' } : q),
+            }));
+            setSectionQuizzes(prev => prev.map(q => q._id === quizId ? { ...q, status: 'PUBLISHED' } : q));
+            // Update preview pane too if it's open
+            if (previewQuiz?._id === quizId) setPreviewQuiz(prev => ({ ...prev, status: 'PUBLISHED' }));
+            alert('Quiz published! Students can now access it.');
+        } catch (error) {
+            console.error(error);
+            alert(error?.response?.data?.message || 'Error publishing quiz.');
+        }
+    };
+
+    const handleOpenPreview = async (quizId) => {
+        setPreviewLoading(true);
+        setPreviewQuiz(null);
+        try {
+            const res = await api.get(`/api/quiz/${quizId}/detail`);
+            const data = res.data?.data ?? res.data;
+            setPreviewQuiz(data);
+        } catch (err) {
+            console.error('Failed loading quiz preview:', err);
+            alert(err?.response?.data?.message || 'Could not load quiz preview.');
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
+    // Delete a single question from the DRAFT quiz
+    const handleDeleteQuestion = async (questionPosition) => {
+        if (!previewQuiz || previewQuiz.status !== 'DRAFT') return;
+        if (previewQuiz.questions.length <= 1) {
+            return alert('A quiz must have at least 1 question.');
+        }
+        if (!window.confirm(`Delete Question ${questionPosition}? This cannot be undone.`)) return;
+
+        const updatedQuestions = previewQuiz.questions
+            .filter(q => q.position !== questionPosition)
+            .map((q, idx) => ({
+                questionText: q.questionText,
+                options: q.options,
+                correctOptionIndex: q.correctOptionIndex,
+                explanation: q.explanation ?? '',
+                topicTag: q.topicTag ?? null,
+                weight: q.weight ?? 1,
+            }));
+
+        try {
+            await api.put(`/api/quiz/${previewQuiz._id}`, { questions: updatedQuestions });
+            // Refresh preview
+            const res = await api.get(`/api/quiz/${previewQuiz._id}/detail`);
+            setPreviewQuiz(res.data?.data ?? res.data);
+        } catch (err) {
+            alert(err?.response?.data?.message || 'Failed to delete question.');
+        }
+    };
+
+    // Inline-edit a question text and save
+    const handleSaveQuestionEdit = async (questionPosition, updatedText) => {
+        if (!previewQuiz || previewQuiz.status !== 'DRAFT') return;
+        const updatedQuestions = previewQuiz.questions.map(q => ({
+            questionText: q.position === questionPosition ? updatedText : q.questionText,
+            options: q.options,
+            correctOptionIndex: q.correctOptionIndex,
+            explanation: q.explanation ?? '',
+            topicTag: q.topicTag ?? null,
+            weight: q.weight ?? 1,
+        }));
+        try {
+            await api.put(`/api/quiz/${previewQuiz._id}`, { questions: updatedQuestions });
+            setPreviewQuiz(prev => ({
+                ...prev,
+                questions: prev.questions.map(q =>
+                    q.position === questionPosition ? { ...q, questionText: updatedText } : q
+                ),
+            }));
+        } catch (err) {
+            alert(err?.response?.data?.message || 'Failed to save edit.');
+        }
+    };
+
 
     const handleDeleteMaterial = async (materialId) => {
         if (!window.confirm('Are you sure you want to delete these class notes? Students will lose access immediately.')) return;
@@ -247,18 +452,18 @@ const TeacherDashboard = () => {
         }
 
         try {
-            await api.post('/api/quiz/generate', formData);
-            alert("AI Quiz Generated successfully!");
+            const res = await api.post('/api/quiz/generate', formData);
+            const newQuiz = res.data?.data?.quiz ?? null;
+            alert("AI Quiz Generated (DRAFT). Review it below, then click Publish to make it available to students.");
             setIsQuizModalOpen(false);
             setQuizForm({ targetAudienceId: '', title: '', topic: '', difficulty: 'MEDIUM', numQuestions: 5, document: null });
-            // Refresh analytics to show the newly added quiz natively!
-            if (selectedContextId) {
+            // Prepend draft quiz to recent list immediately
+            if (newQuiz) {
+                setAnalytics(prev => ({ ...prev, recentQuizzes: [newQuiz, ...prev.recentQuizzes] }));
+            } else if (selectedContextId) {
                 const refreshRes = await api.get(`/api/academic/${selectedContextId}/analytics`);
-                if (refreshRes.data) {
-                    setAnalytics(refreshRes.data);
-                }
+                if (refreshRes.data) setAnalytics(refreshRes.data);
             }
-
         } catch (error) {
             console.error(error);
             alert(error?.response?.data?.message || "Error generating quiz.");
@@ -268,6 +473,7 @@ const TeacherDashboard = () => {
     };
 
     return (
+        <>
         <PageContainer>
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -461,13 +667,37 @@ const TeacherDashboard = () => {
                             ) : (
                                 analytics.recentQuizzes.slice(0, 4).map((q) => (
                                     <div key={q._id} className="group flex justify-between items-start p-3 bg-surface-alt rounded-xl border border-border-base hover:border-primary/30 transition-all">
-                                        <div>
-                                            <p className="text-sm font-medium text-text-primary line-clamp-1">{q.title}</p>
-                                            <p className="text-xs text-text-muted mt-1 capitalize">{q.baseDifficulty.toLowerCase()} • {q.questions?.length || 0} Qs</p>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <p className="text-sm font-medium text-text-primary line-clamp-1">{q.title ?? 'Untitled'}</p>
+                                                {q.status === 'DRAFT' && (
+                                                    <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">DRAFT</span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-text-muted capitalize">{(q.baseDifficulty ?? 'medium').toLowerCase()} • {q.questions?.length ?? 0} Qs</p>
                                         </div>
-                                        <button onClick={() => handleDeleteQuiz(q._id)} className="text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex items-center gap-1 ml-2 shrink-0">
+                                            {/* Preview button — always visible on hover */}
+                                            <button
+                                                onClick={() => handleOpenPreview(q._id)}
+                                                title="Preview questions"
+                                                className="text-text-muted hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+                                            {q.status === 'DRAFT' && (
+                                                <button
+                                                    onClick={() => handlePublishQuiz(q._id)}
+                                                    title="Publish quiz"
+                                                    className="text-xs px-2 py-1 rounded-md bg-success/10 text-success border border-success/20 hover:bg-success/20 transition-colors font-medium opacity-0 group-hover:opacity-100"
+                                                >
+                                                    Publish
+                                                </button>
+                                            )}
+                                            <button onClick={() => handleDeleteQuiz(q._id)} className="text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             )}
@@ -725,6 +955,81 @@ const TeacherDashboard = () => {
                 </div>
             )}
         </PageContainer>
+
+            {/* ── Quiz Preview Modal ───────────────────────────────────── */}
+            {(previewQuiz || previewLoading) && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-surface border border-border-base rounded-2xl shadow-2xl overflow-hidden">
+
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-4 p-6 border-b border-border-base bg-surface-alt/40 shrink-0">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <h3 className="text-xl font-heading font-bold text-text-primary truncate">
+                                        {previewQuiz?.title ?? 'Loading...'}
+                                    </h3>
+                                    {previewQuiz?.status === 'DRAFT' && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 shrink-0">DRAFT</span>
+                                    )}
+                                    {previewQuiz?.status === 'PUBLISHED' && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success/15 text-success border border-success/30 shrink-0">PUBLISHED</span>
+                                    )}
+                                </div>
+                                {previewQuiz && (
+                                    <p className="text-xs text-text-muted">
+                                        {previewQuiz.baseDifficulty} &bull; {previewQuiz.sourceType === 'PDF' ? 'PDF Source' : previewQuiz.topicName ?? 'Topic'} &bull; {previewQuiz.questionCount} questions
+                                        {previewQuiz.duration && ` • ${Math.floor(previewQuiz.duration / 60)} min`}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                {previewQuiz?.status === 'DRAFT' && (
+                                    <button
+                                        onClick={() => handlePublishQuiz(previewQuiz._id)}
+                                        className="px-4 py-2 text-sm font-semibold rounded-lg bg-success text-white hover:bg-success/90 transition-colors"
+                                    >
+                                        Publish
+                                    </button>
+                                )}
+                                <button onClick={() => setPreviewQuiz(null)} className="p-1.5 text-text-muted hover:text-text-primary transition-colors rounded-lg hover:bg-surface-alt">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Body — scrollable question list */}
+                        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+                            {previewLoading && (
+                                <div className="flex items-center justify-center py-16 text-text-secondary text-sm">Loading questions...</div>
+                            )}
+
+                            {!previewLoading && previewQuiz?.questions?.map((q) => (
+                                <QuestionCard
+                                    key={q.position}
+                                    q={q}
+                                    isDraft={previewQuiz.status === 'DRAFT'}
+                                    onDelete={handleDeleteQuestion}
+                                    onSave={handleSaveQuestionEdit}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="shrink-0 px-6 py-4 border-t border-border-base bg-surface-alt/30 flex justify-between items-center">
+                            <p className="text-xs text-text-muted">
+                                {previewQuiz ? `${previewQuiz.questionCount} questions` : ''}
+                            </p>
+                            <button
+                                onClick={() => setPreviewQuiz(null)}
+                                className="px-4 py-2 text-sm rounded-lg border border-border-base text-text-secondary hover:text-text-primary hover:bg-surface-alt transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 

@@ -49,13 +49,26 @@ const QuizSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['DRAFT', 'PUBLISHED'],
-        default: 'PUBLISHED'
-    }
+        default: 'DRAFT',   // Teachers must explicitly publish after preview
+    },
+    // Exam duration in seconds (default: 2 min per question, set on generate)
+    duration: {
+        type: Number,
+        default: null,       // null = calculated dynamically from question count
+        min: 60,
+    },
+    // Total marks pool for percentage-based scoring
+    totalMarks: {
+        type: Number,
+        default: null,       // null = falls back to raw weighted score
+        min: 1,
+    },
 }, { timestamps: true });
 
 // Create indexes for faster queries
 QuizSchema.index({ targetAudience: 1, createdBy: 1, createdAt: -1 });
 QuizSchema.index({ targetAudience: 1 });
+QuizSchema.index({ status: 1, targetAudience: 1 });
 
 // Schema-level validation
 QuizSchema.pre('validate', function (next) {

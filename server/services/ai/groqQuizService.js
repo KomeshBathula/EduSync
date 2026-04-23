@@ -1,7 +1,7 @@
 import { chatCompletion, safeParseJSON } from './groqClient.js';
 import { extractTextFromPDF } from './pdfTextExtractor.js';
 
-const MAX_RETRIES_PARSE = 1; // One retry on malformed JSON
+const MAX_RETRIES_PARSE = 2; // Up to two retries on malformed JSON
 
 /**
  * Build the AI prompt based on source type.
