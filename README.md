@@ -100,7 +100,15 @@ VITE_API_URL=http://localhost:5000
 cd server && node seed.js
 ```
 
-This creates 100 students, 10 teachers, 5 quizzes, and ~200 quiz results. Default password: `Password@123`
+This populates sample data and default test accounts:
+
+- **Faculty / Teacher:**
+  - **Email:** `teacher@edusync.com`
+  - **Password:** `teacher@123`
+
+- **Student:**
+  - **Email:** `student@edusync.com`
+  - **Password:** `student@123`
 
 ### Running the App
 
