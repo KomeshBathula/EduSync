@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Github, Linkedin, Sparkles, BookOpen, BrainCircuit, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft, Github, Linkedin, Sparkles, BookOpen, BrainCircuit, ArrowUpRight, Code, Terminal } from 'lucide-react';
 
 const Founders = () => {
     const navigate = useNavigate();
@@ -11,6 +11,7 @@ const Founders = () => {
             id: '01',
             name: "Komesh Bathula",
             role: "Co-Founder & Lead Architect",
+            tag: "Co-Founder",
             github: "https://github.com/komeshbathula",
             linkedin: "https://linkedin.com/in/komeshbathula",
             description: "Specializes in full-stack architecture and AI integration. Driven by creating seamless educational ecosystems.",
@@ -22,6 +23,7 @@ const Founders = () => {
             id: '02',
             name: "Ramteja Kalluri",
             role: "Co-Founder & Product Designer",
+            tag: "Co-Founder",
             github: "https://github.com/ramtejakalluri",
             linkedin: "https://linkedin.com/in/ramtejakalluri",
             description: "Expert in human-centered design and adaptive learning systems. Focused on building calm and intuitive workspaces.",
@@ -33,12 +35,37 @@ const Founders = () => {
             id: '03',
             name: "Jaideep Vantipalli",
             role: "Co-Founder & System Engineer",
+            tag: "Co-Founder",
             github: "https://github.com/jaideepvantipalli",
             linkedin: "https://linkedin.com/in/jaideepvantipalli",
             description: "Passionate about scalable system infrastructure and secure data management for educational platforms.",
             specialties: ["Infrastructure", "Security", "Reliability"],
             Icon: BrainCircuit,
             tone: "from-secondary-base/30 via-secondary-base/10 to-transparent"
+        },
+        {
+            id: '04',
+            name: "Ram Reddy Tadi",
+            role: "Backend Developer",
+            tag: "Developer",
+            github: "https://github.com/ramreddy-tadi",
+            linkedin: "https://www.linkedin.com/in/ramreddy-tadi/",
+            description: "Specializes in robust server architecture, high-performance API design, and secure database management.",
+            specialties: ["Backend Architecture", "API Integration", "Database Optimization"],
+            Icon: Code,
+            tone: "from-primary/25 via-accent-base/10 to-transparent"
+        },
+        {
+            id: '05',
+            name: "Tejas Kabotula",
+            role: "ML Engineer",
+            tag: "ML Engineer",
+            github: "https://github.com/TejasKabotula",
+            linkedin: "https://www.linkedin.com/in/tejas-sainadh-kumar-kabotula/",
+            description: "Focuses on intelligent learning algorithms, machine learning model integration, and data-driven insights.",
+            specialties: ["Machine Learning", "AI Integration", "Predictive Analytics"],
+            Icon: Terminal,
+            tone: "from-secondary-base/30 via-primary/10 to-transparent"
         }
     ];
 
@@ -82,7 +109,7 @@ const Founders = () => {
                         </h1>
 
                         <p className="text-lg text-text-secondary mt-7 max-w-2xl leading-relaxed">
-                            EduSync is designed at the intersection of engineering precision and educational empathy. Meet the three builders translating that vision into a living platform.
+                            EduSync is designed at the intersection of engineering precision and educational empathy. Meet the team of builders translating that vision into a living platform.
                         </p>
                     </div>
 
@@ -145,7 +172,7 @@ const Founders = () => {
                                 <div className="relative p-6 sm:p-8 lg:p-10 grid gap-6 lg:gap-8 lg:grid-cols-[110px_1fr_auto] items-start">
                                     <div>
                                         <p className="text-3xl sm:text-4xl font-heading font-bold text-primary leading-none">{founder.id}</p>
-                                        <p className="text-[11px] tracking-[0.18em] uppercase text-text-muted font-semibold mt-3">Co-Founder</p>
+                                        <p className="text-[11px] tracking-[0.18em] uppercase text-text-muted font-semibold mt-3">{founder.tag}</p>
                                     </div>
 
                                     <div>
@@ -209,7 +236,7 @@ const Founders = () => {
                         “We are not just shipping features. We are shaping learning momentum.”
                     </p>
                     <div className="inline-flex items-center gap-2 mt-3 text-xs uppercase tracking-[0.18em] font-bold text-primary">
-                        EduSync Founders
+                        EduSync Founders & Developers
                         <ArrowUpRight className="w-3.5 h-3.5" />
                     </div>
                 </motion.div>
