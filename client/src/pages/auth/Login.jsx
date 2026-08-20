@@ -78,7 +78,7 @@ const Login = () => {
                                 <div>
                                     <p className="text-xs font-bold text-primary uppercase tracking-widest mb-0.5">The Visionaries</p>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-text-primary">Meet our Founders</span>
+                                        <span className="text-sm font-bold text-text-primary">Meet our Founders & Team</span>
                                         <Sparkles className="w-4 h-4 text-accent-base" />
                                     </div>
                                 </div>
